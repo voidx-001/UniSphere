@@ -6,6 +6,8 @@ import { renderHeader, setupHeaderHandlers } from '../components/header.js';
 import { showToast } from '../utils/toast.js';
 import { escapeHtml, safeImageUrl } from '../utils/html.js';
 import { requestConnection } from '../utils/connections.js';
+import { loadUniversities } from '../utils/universities.js';
+import { departments, semesters } from '../utils/academic-options.js';
 
 export async function renderDashboard() {
   const app = document.getElementById('app');
@@ -29,6 +31,9 @@ export async function renderDashboard() {
   // Fetch pending connections
   const pendingRequests = await fetchPendingRequests();
 
+  const onboardingPending = window.localStorage.getItem('profile-onboarding-pending') === 'true';
+  const universities = await loadUniversities();
+
   app.innerHTML = `
     <div class="dashboard-layout">
       ${renderSidebar()}
@@ -39,7 +44,7 @@ export async function renderDashboard() {
 
         <main class="dashboard-main">
           <div class="container">
-            <!-- Welcome Card -->
+
             <div class="welcome-card glass-card slide-up">
               <div class="welcome-content">
                 <h2>Welcome back, ${escapeHtml(profile?.full_name?.split(' ')[0] || 'Student')}!</h2>
@@ -54,6 +59,74 @@ export async function renderDashboard() {
                 </div>
               </div>
             </div>
+
+            ${onboardingPending ? `
+              <div class="onboarding-modal-overlay" id="profile-onboarding-modal">
+                <div class="onboarding-modal glass-card scale-up">
+                  <div class="modal-header">
+                    <div>
+                      <span class="modal-badge">Finish setup</span>
+                      <h2>Complete your profile</h2>
+                      <p class="modal-subtitle">Add the details that make your UniSphere profile feel complete.</p>
+                    </div>
+                    <button class="modal-close" id="onboarding-close" type="button" aria-label="Close onboarding prompt">×</button>
+                  </div>
+
+                  <div class="onboarding-steps">
+                    <div class="step active">
+                      <span>1</span>
+                      <div>
+                        <strong>Profile details</strong>
+                        <p>Make it easier for classmates to find you.</p>
+                      </div>
+                    </div>
+                    <div class="step">
+                      <span>2</span>
+                      <div>
+                        <strong>Start connecting</strong>
+                        <p>Search peers and send requests instantly.</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <form id="onboarding-form" class="onboarding-form">
+                    <div class="form-row">
+                      <div class="form-group">
+                        <label class="form-label" for="onboarding-university">University *</label>
+                        <select id="onboarding-university" name="university" class="form-input" required>
+                          <option value="">Select your university</option>
+                          ${universities.map(u => `<option value="${u}">${u}</option>`).join('')}
+                        </select>
+                      </div>
+                      <div class="form-group">
+                        <label class="form-label" for="onboarding-department">Department *</label>
+                        <select id="onboarding-department" name="department" class="form-input" required>
+                          <option value="">Select department</option>
+                          ${departments.map(d => `<option value="${d}">${d}</option>`).join('')}
+                        </select>
+                      </div>
+                    </div>
+                    <div class="form-row">
+                      <div class="form-group">
+                        <label class="form-label" for="onboarding-semester">Semester *</label>
+                        <select id="onboarding-semester" name="semester" class="form-input" required>
+                          <option value="">Select semester</option>
+                          ${semesters.map(s => `<option value="${s}">Semester ${s}</option>`).join('')}
+                        </select>
+                      </div>
+                      <div class="form-group">
+                        <label class="form-label" for="onboarding-bio">Short Bio</label>
+                        <textarea id="onboarding-bio" name="bio" class="form-input" rows="2" maxlength="500" placeholder="Tell people what you’re into"></textarea>
+                      </div>
+                    </div>
+                    <div class="form-actions">
+                      <button type="submit" class="btn btn-primary">Save profile</button>
+                      <button type="button" class="btn btn-ghost" id="onboarding-skip">Not right now</button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            ` : ''}
 
             <!-- Stats Grid -->
             <div class="stats-grid slide-up" style="animation-delay: 0.1s">
@@ -161,6 +234,50 @@ export async function renderDashboard() {
 
   setupSidebarHandlers();
   setupHeaderHandlers();
+  if (onboardingPending) {
+    setTimeout(() => {
+      document.getElementById('profile-onboarding-modal')?.classList.add('visible');
+    }, 300);
+    setupOnboardingForm();
+  }
+}
+
+function setupOnboardingForm() {
+  const form = document.getElementById('onboarding-form');
+  if (!form) return;
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const formData = new FormData(form);
+    const university = formData.get('university');
+    const department = formData.get('department');
+    const semester = formData.get('semester');
+    const bio = formData.get('bio') || '';
+
+    const { data: profileData, error } = await supabase
+      .from('profiles')
+      .update({ university, department, semester: Number(semester), bio })
+      .eq('id', (await supabase.auth.getUser()).data.user?.id);
+
+    if (error) {
+      showToast(error.message, 'error');
+      return;
+    }
+
+    window.localStorage.removeItem('profile-onboarding-pending');
+    window.localStorage.setItem('profile-onboarding-complete', 'true');
+    showToast('Profile details saved. You’re all set!', 'success');
+    await refreshUserProfile();
+    document.getElementById('profile-onboarding-modal')?.remove();
+  });
+
+  document.getElementById('onboarding-close')?.addEventListener('click', hideOnboardingModal);
+  document.getElementById('onboarding-skip')?.addEventListener('click', hideOnboardingModal);
+}
+
+function hideOnboardingModal() {
+  document.getElementById('profile-onboarding-modal')?.remove();
 }
 
 function renderSidebarOverlay() {

@@ -8,6 +8,7 @@ import { toggleTheme, getTheme } from '../utils/theme.js';
 import { departments, semesters } from '../utils/academic-options.js';
 import { loadUniversities } from '../utils/universities.js';
 import { escapeHtml, safeImageUrl } from '../utils/html.js';
+import { isValidUsername } from '../utils/validation.js';
 
 let selectedProfileImage = null;
 
@@ -490,7 +491,7 @@ function setupSettingsHandlers(profile) {
       const department = document.getElementById('department').value;
       const semester = parseInt(document.getElementById('semester').value);
 
-      if (fullname.length < 2 || !/^[A-Za-z0-9_]{3,30}$/.test(username)) {
+      if (fullname.length < 2 || !isValidUsername(username)) {
         showToast('Enter a valid name and a 3–30 character username', 'error');
         return;
       }

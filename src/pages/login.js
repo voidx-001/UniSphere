@@ -91,7 +91,7 @@ export async function renderLogin() {
         </form>
 
         <div class="auth-footer">
-          <p>Don't have an account? <a href="/register">Create one</a></p>
+          <p>Don't have an account? <a href="/register" onclick="window.router.navigate('/register'); return false;">Create one</a></p>
         </div>
 
         <!-- Forgot Password Modal -->
@@ -363,13 +363,17 @@ function setupLoginForm() {
 
     // Basic validation
     if (!email) {
-      showFieldError('email', 'Please enter your email');
+      showFieldError('email', "Need your email, don't ghost it.");
+      return;
+    }
+    if (!validateEmail(email)) {
+      showFieldError('email', "That email ain't valid, try again.");
       return;
     }
     clearFieldError('email');
 
     if (!password) {
-      showFieldError('password', 'Please enter your password');
+      showFieldError('password', "Password? Yeah, we need it.");
       return;
     }
     clearFieldError('password');
@@ -387,7 +391,7 @@ function setupLoginForm() {
 
       if (error) {
         if (error.message.includes('Invalid login credentials')) {
-          showToast('Invalid email or password. Please try again.', 'error');
+          showToast('Nope, wrong email or password. Try again.', 'error');
         } else {
           showToast(error.message, 'error');
         }
@@ -435,7 +439,11 @@ function setupLoginForm() {
     const email = document.getElementById('reset-email').value.trim();
 
     if (!email) {
-      showToast('Please enter your email address', 'error');
+      showToast('Drop your email first so we can send the link.', 'error');
+      return;
+    }
+    if (!validateEmail(email)) {
+      showToast('That email looks sus. Use a real one.', 'error');
       return;
     }
 
@@ -444,10 +452,14 @@ function setupLoginForm() {
     if (error) {
       showToast(error.message, 'error');
     } else {
-      showToast('Password reset email sent! Check your inbox.', 'success');
+      showToast('Reset link sent. Check your inbox, fam.', 'success');
       hideForgotPassword();
     }
   };
+}
+
+function validateEmail(email) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
 function showFieldError(field, message) {

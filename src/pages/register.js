@@ -1,14 +1,12 @@
 import { router } from '../lib/router.js';
 import { supabase } from '../lib/supabase.js';
 import { showToast } from '../utils/toast.js';
-import { loadUniversities } from '../utils/universities.js';
-import { departments, semesters } from '../utils/academic-options.js';
-
-let selectedProfileImage = null;
+import { getSignupErrorMessage } from '../utils/auth-errors.js';
+import { buildSupabaseSignupPayload } from '../utils/auth-signup.js';
+import { isValidUsername, validateRegisterStep } from '../utils/validation.js';
 
 export async function renderRegister() {
   const app = document.getElementById('app');
-  const universityOptions = await loadUniversities();
 
   app.innerHTML = `
     <div class="auth-page">
@@ -33,11 +31,12 @@ export async function renderRegister() {
           </a>
           <h1 class="auth-title">Create Account</h1>
           <p class="auth-subtitle">Join the student network across Pakistan</p>
+          <div class="auth-note">One quick account setup, then complete your profile inside the dashboard.</div>
         </div>
 
         <form id="register-form" class="auth-form">
           <div class="form-section">
-            <h3 class="form-section-title">Basic Information</h3>
+            <h3 class="form-section-title">Create your account</h3>
 
             <div class="form-row">
               <div class="form-group">
@@ -54,10 +53,6 @@ export async function renderRegister() {
                 <span class="form-error" id="username-error"></span>
               </div>
             </div>
-          </div>
-
-          <div class="form-section">
-            <h3 class="form-section-title">Account Details</h3>
 
             <div class="form-group">
               <label class="form-label" for="email">Email Address *</label>
@@ -104,81 +99,6 @@ export async function renderRegister() {
             </div>
           </div>
 
-          <div class="form-section">
-            <h3 class="form-section-title">Academic Information</h3>
-
-            <div class="form-group">
-              <label class="form-label" for="university">University *</label>
-              <select id="university" name="university" class="form-input" required>
-                <option value="">Select your university</option>
-                ${universityOptions.map(uni => `<option value="${uni}">${uni}</option>`).join('')}
-              </select>
-              <span class="form-error" id="university-error"></span>
-            </div>
-
-            <div class="form-row">
-              <div class="form-group">
-                <label class="form-label" for="department">Department *</label>
-                <select id="department" name="department" class="form-input" required>
-                  <option value="">Select department</option>
-                  ${departments.map(dept => `<option value="${dept}">${dept}</option>`).join('')}
-                </select>
-                <span class="form-error" id="department-error"></span>
-              </div>
-
-              <div class="form-group">
-                <label class="form-label" for="semester">Semester *</label>
-                <select id="semester" name="semester" class="form-input" required>
-                  <option value="">Select semester</option>
-                  ${semesters.map(sem => `<option value="${sem}">Semester ${sem}</option>`).join('')}
-                </select>
-                <span class="form-error" id="semester-error"></span>
-              </div>
-            </div>
-          </div>
-
-          <div class="form-section">
-            <h3 class="form-section-title">Profile Setup</h3>
-
-            <div class="form-group">
-              <label class="form-label">Profile Picture</label>
-              <div class="profile-upload">
-                <div class="profile-preview" id="profile-preview">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-                    <circle cx="12" cy="7" r="4"/>
-                  </svg>
-                </div>
-                <div class="upload-info">
-                  <input type="file" id="profile-image" name="profileImage" accept="image/jpeg,image/png" class="hidden">
-                  <button type="button" class="btn btn-secondary" onclick="document.getElementById('profile-image').click()">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                      <polyline points="17 8 12 3 7 8"/>
-                      <line x1="12" y1="3" x2="12" y2="15"/>
-                    </svg>
-                    Choose Photo
-                  </button>
-                  <span class="upload-hint">JPG, PNG up to 2MB</span>
-                </div>
-              </div>
-            </div>
-
-            <div class="form-group">
-              <label class="form-label" for="bio">Bio</label>
-              <textarea id="bio" name="bio" class="form-input" rows="3" maxlength="500"
-                placeholder="Tell others about yourself, your interests, and what you're looking to connect for..."></textarea>
-              <span class="form-hint">Maximum 500 characters</span>
-            </div>
-          </div>
-
-          <div class="form-group">
-            <label class="form-checkbox">
-              <input type="checkbox" id="terms" required>
-              <span>I agree to the <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a></span>
-            </label>
-          </div>
-
           <button type="submit" class="btn btn-primary btn-lg auth-submit">
             <span class="btn-text">Create Account</span>
             <span class="btn-loading hidden">
@@ -189,7 +109,7 @@ export async function renderRegister() {
         </form>
 
         <div class="auth-footer">
-          <p>Already have an account? <a href="/login">Sign in</a></p>
+          <p>Already have an account? <a href="/login" onclick="window.router.navigate('/login'); return false;">Sign in</a></p>
         </div>
       </div>
     </div>
@@ -218,28 +138,50 @@ export async function renderRegister() {
         display: inline-flex;
         align-items: center;
         gap: var(--space-2);
-        color: var(--text-primary);
-        font-weight: 600;
+        color: var(--primary-700);
+        font-weight: 700;
         font-size: var(--font-size-xl);
-        margin-bottom: var(--space-6);
+        margin-bottom: var(--space-4);
+        padding: var(--space-2) var(--space-3);
+        background: rgba(59, 130, 246, 0.1);
+        border-radius: var(--radius-full);
       }
 
       .auth-title {
-        font-size: var(--font-size-2xl);
-        font-weight: 700;
+        font-size: var(--font-size-3xl);
+        font-weight: 800;
         color: var(--text-primary);
         margin-bottom: var(--space-2);
       }
 
       .auth-subtitle {
         color: var(--text-secondary);
+        max-width: 520px;
+        margin: 0 auto;
       }
 
       .auth-form {
         background: var(--bg-primary);
         padding: var(--space-8);
+        border-radius: var(--radius-2xl);
+        box-shadow: var(--shadow-xl);
+        max-width: 720px;
+        margin: 0 auto;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .auth-note {
+        margin-top: var(--space-3);
+        max-width: 520px;
+        margin-left: auto;
+        margin-right: auto;
+        font-size: var(--font-size-sm);
+        color: var(--text-secondary);
+        background: rgba(59, 130, 246, 0.08);
+        border: 1px solid rgba(59, 130, 246, 0.16);
         border-radius: var(--radius-xl);
-        box-shadow: var(--shadow-lg);
+        padding: var(--space-4);
       }
 
       @media (max-width: 767px) {
@@ -249,6 +191,17 @@ export async function renderRegister() {
       }
 
       .form-section {
+        margin-bottom: var(--space-6);
+        padding: var(--space-6);
+        background: var(--bg-secondary);
+        border-radius: var(--radius-xl);
+        border: 1px solid var(--border-color);
+      }
+
+      .form-section:last-of-type {
+        border-bottom: none;
+        margin-bottom: var(--space-4);
+      }
         margin-bottom: var(--space-8);
         padding-bottom: var(--space-6);
         border-bottom: 1px solid var(--border-color);
@@ -301,34 +254,40 @@ export async function renderRegister() {
       }
 
       .password-strength {
-        margin-top: var(--space-2);
+        margin-top: var(--space-3);
         display: flex;
         align-items: center;
+        justify-content: space-between;
         gap: var(--space-3);
       }
 
       .strength-bar {
-        display: flex;
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
         gap: var(--space-1);
+        flex: 1;
+        min-width: 120px;
       }
 
       .strength-bar span {
-        width: 40px;
-        height: 4px;
+        height: 5px;
         background: var(--bg-tertiary);
         border-radius: var(--radius-full);
         transition: background var(--transition-fast);
       }
 
-      .strength-bar.weak span:first-child {
+      .strength-bar.weak span:nth-child(1) {
         background: var(--error-500);
       }
 
-      .strength-bar.fair span:nth-child(-n+2) {
+      .strength-bar.fair span:nth-child(1),
+      .strength-bar.fair span:nth-child(2) {
         background: var(--warning-500);
       }
 
-      .strength-bar.good span:nth-child(-n+3) {
+      .strength-bar.good span:nth-child(1),
+      .strength-bar.good span:nth-child(2),
+      .strength-bar.good span:nth-child(3) {
         background: var(--primary-500);
       }
 
@@ -339,9 +298,25 @@ export async function renderRegister() {
       .strength-text {
         font-size: var(--font-size-xs);
         color: var(--text-muted);
+        white-space: nowrap;
       }
 
-      .profile-upload {
+      .auth-submit {
+        width: 100%;
+        margin-top: var(--space-5);
+        padding: var(--space-4) var(--space-6);
+        border-radius: var(--radius-full);
+      }
+
+      .auth-footer {
+        text-align: center;
+        margin-top: var(--space-6);
+        color: var(--text-secondary);
+      }
+
+      .auth-footer a {
+        font-weight: 500;
+      }
         display: flex;
         align-items: center;
         gap: var(--space-4);
@@ -414,11 +389,24 @@ export async function renderRegister() {
   setupFormHandlers();
 }
 
+function getFieldValue(fieldName) {
+  const form = document.getElementById('register-form');
+  return form?.elements.namedItem(fieldName)?.value ?? '';
+}
+
+function getFieldElement(fieldName) {
+  return document.getElementById(fieldName) || document.querySelector(`[name="${fieldName}"]`);
+}
+
 function setupFormHandlers() {
   const form = document.getElementById('register-form');
   const passwordInput = document.getElementById('password');
   const confirmPasswordInput = document.getElementById('confirm-password');
-  const profileInput = document.getElementById('profile-image');
+  const usernameInput = document.getElementById('username');
+
+  if (!form || !passwordInput || !confirmPasswordInput || !usernameInput) {
+    return;
+  }
 
   // Password strength checker
   passwordInput.addEventListener('input', (e) => {
@@ -427,41 +415,30 @@ function setupFormHandlers() {
     updateStrengthIndicator(strength);
   });
 
-  // Profile image preview
-  profileInput.addEventListener('change', (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      if (!['image/jpeg', 'image/png'].includes(file.type)) {
-        showToast('Please choose a JPG or PNG image', 'error');
-        e.target.value = '';
-        return;
-      }
-
-      if (file.size > 2 * 1024 * 1024) {
-        showToast('Image size should be less than 2MB', 'error');
-        return;
-      }
-
-      selectedProfileImage = file;
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const preview = document.getElementById('profile-preview');
-        preview.innerHTML = `<img src="${e.target.result}" alt="Profile preview">`;
-      };
-      reader.readAsDataURL(file);
-    }
-  });
-
   // Username validation
-  document.getElementById('username').addEventListener('blur', async (e) => {
+  usernameInput.addEventListener('blur', async (e) => {
     const username = e.target.value.trim();
-    if (username.length >= 3) {
-      const isUnique = await checkUsernameUnique(username);
-      if (!isUnique) {
-        showFieldError('username', 'This username is already taken');
-      } else {
-        clearFieldError('username');
-      }
+
+    if (username.length === 0) {
+      clearFieldError('username');
+      return;
+    }
+
+    if (username.length < 3) {
+      showFieldError('username', 'Username gotta be 3+ chars.');
+      return;
+    }
+
+    if (!isValidUsername(username)) {
+      showFieldError('username', 'Use only letters, numbers, dots, and underscores.');
+      return;
+    }
+
+    const isUnique = await checkUsernameUnique(username);
+    if (!isUnique) {
+      showFieldError('username', 'That username is already taken. Pick another one.');
+    } else {
+      clearFieldError('username');
     }
   });
 
@@ -490,7 +467,7 @@ function setupFormHandlers() {
     try {
       await handleRegistration(form);
     } catch (error) {
-      showToast(error.message, 'error');
+      showToast(error.message || 'Unable to create your account right now.', 'error');
     } finally {
       submitBtn.disabled = false;
       submitBtn.querySelector('.btn-text').classList.remove('hidden');
@@ -506,98 +483,54 @@ function setupFormHandlers() {
 }
 
 function validateForm() {
-  let isValid = true;
-  const form = document.getElementById('register-form');
+  const values = {
+    fullname: getFieldValue('fullname'),
+    username: getFieldValue('username'),
+    email: getFieldValue('email'),
+    password: getFieldValue('password'),
+    confirmPassword: getFieldValue('confirmPassword')
+  };
 
-  // Full name
-  const fullname = form.fullname.value.trim();
-  if (fullname.length < 2) {
-    showFieldError('fullname', 'Name must be at least 2 characters');
-    isValid = false;
-  } else {
-    clearFieldError('fullname');
+  ['fullname', 'username', 'email', 'password', 'confirm-password'].forEach(clearFieldError);
+
+  const result = validateRegisterStep(1, values);
+  if (!result.isValid) {
+    Object.entries(result.errors).forEach(([field, message]) => {
+      showFieldError(field, message);
+    });
+
+    const firstErrorField = Object.keys(result.errors)[0];
+    const firstFieldEl = getFieldElement(firstErrorField);
+    if (firstFieldEl?.focus) firstFieldEl.focus();
+    firstFieldEl?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    return false;
   }
 
-  // Username
-  const username = form.username.value.trim();
-  if (username.length < 3) {
-    showFieldError('username', 'Username must be at least 3 characters');
-    isValid = false;
-  } else if (!/^[a-zA-Z0-9_]+$/.test(username)) {
-    showFieldError('username', 'Username can only contain letters, numbers, and underscores');
-    isValid = false;
-  } else {
-    clearFieldError('username');
-  }
-
-  // Email
-  const email = form.email.value.trim();
-  if (!validateEmail(email)) {
-    showFieldError('email', 'Please enter a valid email address');
-    isValid = false;
-  } else {
-    clearFieldError('email');
-  }
-
-  // Password
-  const password = form.password.value;
-  if (password.length < 8) {
-    showFieldError('password', 'Password must be at least 8 characters');
-    isValid = false;
-  } else if (checkPasswordStrength(password).score < 2) {
-    showFieldError('password', 'Password is too weak. Include uppercase, lowercase, and numbers');
-    isValid = false;
-  } else {
-    clearFieldError('password');
-  }
-
-  // Confirm password
-  if (password !== form.confirmPassword.value) {
-    showFieldError('confirm-password', 'Passwords do not match');
-    isValid = false;
-  } else {
-    clearFieldError('confirm-password');
-  }
-
-  // University
-  if (!form.university.value) {
-    showFieldError('university', 'Please select your university');
-    isValid = false;
-  } else {
-    clearFieldError('university');
-  }
-
-  // Department
-  if (!form.department.value) {
-    showFieldError('department', 'Please select your department');
-    isValid = false;
-  } else {
-    clearFieldError('department');
-  }
-
-  // Semester
-  if (!form.semester.value) {
-    showFieldError('semester', 'Please select your semester');
-    isValid = false;
-  } else {
-    clearFieldError('semester');
-  }
-
-  return isValid;
+  return true;
 }
 
 function showFieldError(field, message) {
   const errorEl = document.getElementById(`${field}-error`);
-  const inputEl = document.getElementById(field.replace('-', ''));
+  const inputEl = getFieldElement(field);
   if (errorEl) errorEl.textContent = message;
-  if (inputEl) inputEl.classList.add('error');
+  if (inputEl) {
+    inputEl.classList.add('error');
+    if (field === 'terms') {
+      inputEl.closest('.form-checkbox')?.classList.add('error');
+    }
+  }
 }
 
 function clearFieldError(field) {
   const errorEl = document.getElementById(`${field}-error`);
-  const inputEl = document.getElementById(field.replace('-', ''));
+  const inputEl = getFieldElement(field);
   if (errorEl) errorEl.textContent = '';
-  if (inputEl) inputEl.classList.remove('error');
+  if (inputEl) {
+    inputEl.classList.remove('error');
+    if (field === 'terms') {
+      inputEl.closest('.form-checkbox')?.classList.remove('error');
+    }
+  }
 }
 
 function validateEmail(email) {
@@ -606,21 +539,21 @@ function validateEmail(email) {
 
 function checkPasswordStrength(password) {
   let score = 0;
-  let feedback = 'Too weak';
 
   if (password.length >= 8) score++;
   if (password.length >= 12) score++;
-  if (/[a-z]/.test(password) && /[A-Z]/.test(password)) score++;
+  if (/[a-z]/.test(password)) score++;
+  if (/[A-Z]/.test(password)) score++;
   if (/\d/.test(password)) score++;
   if (/[^a-zA-Z0-9]/.test(password)) score++;
 
-  const levels = ['weak', 'weak', 'fair', 'good', 'strong'];
-  const feedbacks = ['Too weak', 'Weak', 'Fair', 'Good', 'Strong'];
+  const level = score >= 5 ? 'strong' : score >= 4 ? 'good' : score >= 3 ? 'fair' : 'weak';
+  const feedback = score >= 5 ? 'Strong' : score >= 4 ? 'Good' : score >= 3 ? 'Fair' : 'Too weak';
 
   return {
     score,
-    level: levels[score] || 'weak',
-    feedback: feedbacks[score] || 'Too weak'
+    level,
+    feedback
   };
 }
 
@@ -643,59 +576,71 @@ async function checkUsernameUnique(username) {
 
 async function handleRegistration(form) {
   const formData = new FormData(form);
+  const email = String(formData.get('email') || '').trim();
+  const password = String(formData.get('password') || '');
+  const fullName = String(formData.get('fullname') || '').trim();
+  const username = String(formData.get('username') || '').trim();
 
-  // Create auth user
   const { data: authData, error: authError } = await supabase.auth.signUp({
-    email: formData.get('email'),
-    password: formData.get('password'),
+    ...buildSupabaseSignupPayload({ email, password }),
     options: {
-      data: {
-        full_name: formData.get('fullname'),
-        username: formData.get('username'),
-        university: formData.get('university'),
-        department: formData.get('department'),
-        semester: parseInt(formData.get('semester')),
-        bio: formData.get('bio') || ''
-      }
+      emailRedirectTo: undefined,
+      data: undefined
     }
   });
 
   if (authError) {
-    throw new Error(authError.message);
+    throw new Error(getSignupErrorMessage(authError));
   }
 
   if (!authData.user) {
     throw new Error('Failed to create account. Please try again.');
   }
 
-  // Email-confirmation projects do not return a session at sign-up. The
-  // database trigger still creates the profile; image upload waits for login.
-  let profileImageUrl = '';
-  if (selectedProfileImage && authData.session) {
-    const fileExt = selectedProfileImage.type === 'image/png' ? 'png' : 'jpg';
-    const fileName = `${authData.user.id}/avatar.${fileExt}`;
+  const user = authData.user;
+  let session = authData.session;
 
-    const { error: uploadError } = await supabase.storage
-      .from('profile-images')
-      .upload(fileName, selectedProfileImage);
-
-    if (!uploadError) {
-      const { data: urlData } = supabase.storage
-        .from('profile-images')
-        .getPublicUrl(fileName);
-      profileImageUrl = urlData.publicUrl;
+  if (!session) {
+    const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+    session = signInData?.session || null;
+    if (signInError) {
+      console.warn('Auto sign-in after signup failed:', signInError.message);
     }
   }
 
-  if (profileImageUrl) {
-    const { error: profileError } = await supabase
-      .from('profiles')
-      .update({ profile_image: profileImageUrl })
-      .eq('id', authData.user.id);
-
-    if (profileError) console.error('Profile image update error:', profileError);
+  if (session) {
+    const profileError = await createProfileForUser(user.id, email, fullName, username);
+    if (profileError) {
+      throw new Error(profileError.message || 'Unable to create your profile yet. Please log in after verifying your email.');
+    }
+  } else {
+    console.warn('No active session available to create a profile automatically.');
   }
 
-  showToast('Account created successfully! Please check your email to verify.', 'success');
-  router.navigate('/login');
+  window.localStorage.setItem('profile-onboarding-pending', 'true');
+  window.localStorage.removeItem('profile-onboarding-complete');
+
+  showToast('Account created! We sent a verification email and you can continue setting up your profile.', 'success');
+  router.navigate('/dashboard');
+}
+
+async function createProfileForUser(userId, email, fullName, username) {
+  const profilePayload = {
+    id: userId,
+    full_name: fullName,
+    username,
+    university: null,
+    department: null,
+    semester: null,
+    bio: ''
+  };
+
+  const { error } = await supabase.from('profiles').insert([profilePayload]);
+  if (error) {
+    // If profile creation fails due to a duplicate username or database constraint,
+    // let the user know while still keeping the auth account creation path intact.
+    return error;
+  }
+
+  return null;
 }

@@ -3,6 +3,8 @@ import { router } from './lib/router.js';
 import './utils/theme.js';
 import './styles/dashboard.css';
 
+window.router = router;
+
 // Auth state
 export let currentUser = null;
 export let userProfile = null;

@@ -12,7 +12,7 @@ ALTER TABLE public.profiles
 ALTER TABLE public.profiles
   ADD CONSTRAINT profiles_semester_check CHECK (semester BETWEEN 1 AND 8) NOT VALID,
   ADD CONSTRAINT profiles_username_check
-    CHECK (username ~ '^[A-Za-z0-9_]{3,30}$') NOT VALID,
+    CHECK (username ~ '^[A-Za-z0-9._]{3,30}$') NOT VALID,
   ADD CONSTRAINT profiles_bio_length_check
     CHECK (char_length(bio) <= 500) NOT VALID;
 
@@ -62,7 +62,7 @@ STABLE
 SECURITY DEFINER
 SET search_path = public
 AS $$
-  SELECT candidate ~ '^[A-Za-z0-9_]{3,30}$'
+  SELECT candidate ~ '^[A-Za-z0-9._]{3,30}$'
     AND NOT EXISTS (
       SELECT 1 FROM public.profiles
       WHERE lower(username) = lower(candidate)
@@ -121,6 +121,11 @@ $$;
 REVOKE ALL ON FUNCTION public.request_connection(uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.request_connection(uuid) TO authenticated;
 
+-- Make profile lookup fields optional for account-first signup.
+ALTER TABLE public.profiles ALTER COLUMN university DROP NOT NULL;
+ALTER TABLE public.profiles ALTER COLUMN department DROP NOT NULL;
+ALTER TABLE public.profiles ALTER COLUMN semester DROP NOT NULL;
+
 -- Create profiles inside the database so email-confirmation settings cannot
 -- leave a successfully created auth user without a profile.
 CREATE OR REPLACE FUNCTION public.handle_new_user()
@@ -129,27 +134,62 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
 AS $$
+DECLARE
+  v_full_name text;
+  v_username text;
+  v_university text;
+  v_department text;
+  v_semester text;
+  v_bio text;
 BEGIN
-  IF NULLIF(btrim(NEW.raw_user_meta_data ->> 'username'), '') IS NULL THEN
+  v_full_name := NULLIF(btrim(COALESCE(NEW.raw_user_meta_data ->> 'full_name', '')), '');
+  v_username := NULLIF(btrim(COALESCE(NEW.raw_user_meta_data ->> 'username', '')), '');
+
+  IF v_username IS NULL THEN
     RETURN NEW;
   END IF;
+
+  v_university := NULLIF(btrim(COALESCE(NEW.raw_user_meta_data ->> 'university', '')), '');
+  v_department := NULLIF(btrim(COALESCE(NEW.raw_user_meta_data ->> 'department', '')), '');
+  v_semester := NULLIF(btrim(COALESCE(NEW.raw_user_meta_data ->> 'semester', '')), '');
+  v_bio := NULLIF(btrim(COALESCE(NEW.raw_user_meta_data ->> 'bio', '')), '');
 
   INSERT INTO public.profiles (
     id, full_name, username, university, department, semester, bio
   ) VALUES (
     NEW.id,
-    btrim(NEW.raw_user_meta_data ->> 'full_name'),
-    btrim(NEW.raw_user_meta_data ->> 'username'),
-    btrim(NEW.raw_user_meta_data ->> 'university'),
-    btrim(NEW.raw_user_meta_data ->> 'department'),
-    (NEW.raw_user_meta_data ->> 'semester')::integer,
-    COALESCE(btrim(NEW.raw_user_meta_data ->> 'bio'), '')
+    COALESCE(v_full_name, ''),
+    v_username,
+    v_university,
+    v_department,
+    CASE
+      WHEN v_semester IS NULL OR v_semester !~ '^[0-9]+$' THEN NULL
+      ELSE v_semester::integer
+    END,
+    COALESCE(v_bio, '')
   )
   ON CONFLICT (id) DO NOTHING;
 
   RETURN NEW;
 END;
 $$;
+
+CREATE OR REPLACE FUNCTION public.auto_confirm_new_user()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  NEW.email_confirmed_at := now();
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS auto_confirm_new_user_trigger ON auth.users;
+CREATE TRIGGER auto_confirm_new_user_trigger
+  BEFORE INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION public.auto_confirm_new_user();
 
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created

@@ -298,7 +298,7 @@ export async function renderLanding() {
                 <h4>Platform</h4>
                 <a href="#features">Features</a>
                 <a href="#about">About Us</a>
-                <a href="/register">Get Started</a>
+                <a href="/register" onclick="window.router.navigate('/register'); return false;">Get Started</a>
               </div>
               <div class="footer-column">
                 <h4>Support</h4>
