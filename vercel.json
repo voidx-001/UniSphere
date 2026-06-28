@@ -1,0 +1,27 @@
+{
+  "routes": [
+    {
+      "src": "/favicon.svg",
+      "dest": "/favicon.svg"
+    },
+    {
+      "src": "/(.*\\.js)",
+      "headers": { "Content-Type": "application/javascript" },
+      "dest": "/$1"
+    },
+    {
+      "src": "/(.*\\.css)",
+      "headers": { "Content-Type": "text/css" },
+      "dest": "/$1"
+    },
+    {
+      "src": "/(.*\\.svg)",
+      "headers": { "Content-Type": "image/svg+xml" },
+      "dest": "/$1"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/index.html"
+    }
+  ]
+}
