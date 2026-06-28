@@ -5,6 +5,7 @@ import { renderSidebar, setupSidebarHandlers } from '../components/sidebar.js';
 import { renderHeader, setupHeaderHandlers } from '../components/header.js';
 import { showToast } from '../utils/toast.js';
 import { escapeHtml, safeImageUrl } from '../utils/html.js';
+import { renderPageLoading } from '../components/loading.js';
 
 let conversations = [];
 let currentChat = null;
@@ -22,6 +23,24 @@ export async function renderMessages() {
   }
 
   window.cleanupCurrentPage = closeChat;
+
+  // Show loading state
+  app.innerHTML = `
+    <div class="dashboard-layout">
+      ${renderSidebar()}
+      <div class="main-content with-sidebar">
+        <div id="sidebar-overlay" class="sidebar-overlay hidden" onclick="closeSidebar()"></div>
+        ${renderHeader('Messages')}
+        <main class="messages-main">
+          <div class="messages-container">
+            ${renderPageLoading('Loading conversations...')}
+          </div>
+        </main>
+      </div>
+    </div>
+  `;
+  setupSidebarHandlers();
+  setupHeaderHandlers();
 
   // Get user ID from URL if opening a specific conversation
   const urlParams = new URLSearchParams(window.location.search);

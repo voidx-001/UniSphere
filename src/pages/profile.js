@@ -6,6 +6,7 @@ import { renderHeader, setupHeaderHandlers } from '../components/header.js';
 import { showToast } from '../utils/toast.js';
 import { escapeHtml, safeImageUrl } from '../utils/html.js';
 import { requestConnection } from '../utils/connections.js';
+import { renderPageLoading } from '../components/loading.js';
 
 let currentProfileId = null;
 
@@ -21,6 +22,24 @@ export async function renderProfile(profileId = null) {
     router.navigate('/login');
     return;
   }
+
+  // Show loading state
+  app.innerHTML = `
+    <div class="dashboard-layout">
+      ${renderSidebar()}
+      <div class="main-content with-sidebar">
+        <div id="sidebar-overlay" class="sidebar-overlay hidden" onclick="closeSidebar()"></div>
+        ${renderHeader('Profile')}
+        <main class="profile-main">
+          <div class="container">
+            ${renderPageLoading('Loading profile...')}
+          </div>
+        </main>
+      </div>
+    </div>
+  `;
+  setupSidebarHandlers();
+  setupHeaderHandlers();
 
   // Fetch profile data
   const profile = await fetchProfile(currentProfileId);

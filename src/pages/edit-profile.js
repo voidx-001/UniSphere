@@ -7,9 +7,29 @@ import { showToast } from '../utils/toast.js';
 import { loadUniversities } from '../utils/universities.js';
 import { departments, semesters } from '../utils/academic-options.js';
 import { escapeHtml, safeImageUrl } from '../utils/html.js';
+import { renderPageLoading } from '../components/loading.js';
 
 export async function renderEditProfile() {
   const app = document.getElementById('app');
+  
+  // Show loading state
+  app.innerHTML = `
+    <div class="dashboard-layout">
+      ${renderSidebar()}
+      <div class="main-content with-sidebar">
+        <div id="sidebar-overlay" class="sidebar-overlay hidden" onclick="closeSidebar()"></div>
+        ${renderHeader('Edit Profile')}
+        <main class="page-main">
+          <div class="container">
+            ${renderPageLoading('Loading profile...')}
+          </div>
+        </main>
+      </div>
+    </div>
+  `;
+  setupSidebarHandlers();
+  setupHeaderHandlers();
+  
   const profile = await refreshUserProfile();
   const universities = await loadUniversities();
 

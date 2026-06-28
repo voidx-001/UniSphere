@@ -4,6 +4,17 @@
   min-height: 100vh;
   background: var(--bg-primary);
   overflow-x: hidden;
+  position: relative;
+}
+
+/* Prevent horizontal scroll on landing page */
+.landing-page * {
+  max-width: 100%;
+}
+
+.landing-page .hero-container,
+.landing-page .nav-container {
+  overflow-x: hidden;
 }
 
 .landing-nav {
@@ -167,12 +178,14 @@
   align-items: center;
   padding: 100px 0 64px;
   overflow: hidden;
+  overflow-x: hidden;
 }
 
 .hero-bg {
   position: absolute;
   inset: 0;
   pointer-events: none;
+  overflow: hidden;
 }
 
 .hero-gradient {
@@ -182,6 +195,7 @@
   width: 70%;
   height: 120%;
   background: radial-gradient(ellipse at center, rgba(59, 130, 246, 0.18) 0%, transparent 65%);
+  max-width: 100%;
 }
 
 .hero-pattern {

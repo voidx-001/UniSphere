@@ -5,6 +5,7 @@ import { renderSidebar, setupSidebarHandlers } from '../components/sidebar.js';
 import { renderHeader, setupHeaderHandlers } from '../components/header.js';
 import { showToast } from '../utils/toast.js';
 import { escapeHtml, safeImageUrl } from '../utils/html.js';
+import { renderPageLoading } from '../components/loading.js';
 
 export async function renderConnectionRequests() {
   const app = document.getElementById('app');
@@ -14,6 +15,24 @@ export async function renderConnectionRequests() {
     router.navigate('/login');
     return;
   }
+
+  // Show loading state
+  app.innerHTML = `
+    <div class="dashboard-layout">
+      ${renderSidebar()}
+      <div class="main-content with-sidebar">
+        <div id="sidebar-overlay" class="sidebar-overlay hidden" onclick="closeSidebar()"></div>
+        ${renderHeader('Connection Requests')}
+        <main class="page-main">
+          <div class="container">
+            ${renderPageLoading('Loading requests...')}
+          </div>
+        </main>
+      </div>
+    </div>
+  `;
+  setupSidebarHandlers();
+  setupHeaderHandlers();
 
   const { data, error } = await supabase
     .from('connections')

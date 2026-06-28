@@ -9,9 +9,30 @@ import { requestConnection } from '../utils/connections.js';
 import { loadUniversities } from '../utils/universities.js';
 import { departments, semesters } from '../utils/academic-options.js';
 import { fetchPostsWithUserLike, createPost, toggleLike } from '../utils/posts.js';
+import { renderPageLoading } from '../components/loading.js';
 
 export async function renderDashboard() {
   const app = document.getElementById('app');
+  
+  // Show loading state
+  app.innerHTML = `
+    <div class="dashboard-layout">
+      ${renderSidebar()}
+      <div class="main-content with-sidebar">
+        <div id="sidebar-overlay" class="sidebar-overlay hidden" onclick="closeSidebar()"></div>
+        ${renderHeader('Dashboard', true)}
+        <main class="dashboard-main">
+          <div class="container container-feed">
+            ${renderPageLoading('Loading your dashboard...')}
+          </div>
+        </main>
+      </div>
+    </div>
+  `;
+  
+  setupSidebarHandlers();
+  setupHeaderHandlers();
+  
   const profile = await refreshUserProfile();
 
   const initials = profile?.full_name?.split(' ')
