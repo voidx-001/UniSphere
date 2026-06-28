@@ -10,6 +10,7 @@ const isBrowserRuntime =
   import.meta.env?.SSR !== true;
 
 if (isBrowserRuntime) {
+  import('./styles/main.css');
   import('./styles/dashboard.css');
 }
 
@@ -64,49 +65,56 @@ export async function refreshUserProfile() {
 // Check initial auth state
 async function initAuth() {
   authReadyPromise = (async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    currentUser = session?.user || null;
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      currentUser = session?.user || null;
 
-    if (currentUser) {
-      await refreshUserProfile();
+      if (currentUser) {
+        await refreshUserProfile();
+      }
+
+      if (!authChangeListenerRegistered) {
+        authChangeListenerRegistered = true;
+        supabase.auth.onAuthStateChange((event, session) => {
+          (async () => {
+            currentUser = session?.user || null;
+
+            if (event === 'TOKEN_REFRESHED') return;
+
+            if (currentUser) {
+              await refreshUserProfile();
+            } else {
+              userProfile = null;
+            }
+
+            syncAuthState();
+
+            if (event === 'PASSWORD_RECOVERY') {
+              router.navigate('/reset-password', false);
+              return;
+            }
+
+            if (event !== 'INITIAL_SESSION') {
+              router.handleRoute();
+            }
+          })();
+        });
+      }
+    } catch (err) {
+      console.error('Auth init failed, continuing in degraded mode:', err);
+      currentUser = null;
+      userProfile = null;
     }
 
     authReady = true;
     syncAuthState();
-
-    if (!authChangeListenerRegistered) {
-      authChangeListenerRegistered = true;
-      supabase.auth.onAuthStateChange((event, session) => {
-        (async () => {
-          currentUser = session?.user || null;
-
-          if (event === 'TOKEN_REFRESHED') return;
-
-          if (currentUser) {
-            await refreshUserProfile();
-          } else {
-            userProfile = null;
-          }
-
-          syncAuthState();
-
-          if (event === 'PASSWORD_RECOVERY') {
-            router.navigate('/reset-password', false);
-            return;
-          }
-
-          if (event !== 'INITIAL_SESSION') {
-            router.handleRoute();
-          }
-        })();
-      });
-    }
 
     return true;
   })();
 
   return authReadyPromise;
 }
+
 
 // Initialize routing
 async function init() {

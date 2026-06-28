@@ -58,39 +58,60 @@ const router = {
 
     const user = typeof globalThis !== 'undefined' ? globalThis.__unisphereCurrentUser || null : null;
     const authReady = typeof globalThis !== 'undefined' ? Boolean(globalThis.__unisphereAuthReady) : true;
-    const decision = getRouteDecision(path, user, authReady);
 
-    if (decision === 'loading') {
-      showAppLoading(app);
-      return;
-    }
+    try {
+      const decision = getRouteDecision(path, user, authReady);
 
-    if (decision === 'login') {
-      this.navigate('/login', false);
-      return;
-    }
+      if (decision === 'loading') {
+        const app = document.getElementById('app');
+        if (app) showAppLoading(app);
+        return;
+      }
 
-    if (decision === 'dashboard') {
-      this.navigate('/dashboard', false);
-      return;
-    }
+      if (decision === 'login') {
+        this.navigate('/login', false);
+        return;
+      }
 
-    // Render the route
-    const app = document.getElementById('app');
-    if (typeof window.cleanupCurrentPage === 'function') {
-      window.cleanupCurrentPage();
-    }
-    window.cleanupCurrentPage = null;
-    app.innerHTML = '';
-    app.className = 'page-enter';
+      if (decision === 'dashboard') {
+        this.navigate('/dashboard', false);
+        return;
+      }
 
-    if (hash && typeof route === 'function') {
-      await route(hash);
-    } else {
-      await route();
+      // Render the route
+      const app = document.getElementById('app');
+      if (!app) return;
+
+      if (typeof window.cleanupCurrentPage === 'function') {
+        window.cleanupCurrentPage();
+      }
+      window.cleanupCurrentPage = null;
+      app.innerHTML = '';
+      app.className = 'page-enter';
+
+      if (hash && typeof route === 'function') {
+        await route(hash);
+      } else {
+        await route();
+      }
+    } catch (err) {
+      console.error('Router handleRoute failed:', err);
+
+      const app = document.getElementById('app');
+      if (!app) return;
+
+      app.innerHTML = '';
+      app.className = 'page-enter';
+
+      try {
+        await renderNotFound();
+      } catch (_) {
+        app.innerHTML = '<div class="empty-state">Something went wrong. Please refresh.</div>';
+      }
     }
   }
 };
+
 
 function showAppLoading(app) {
   app.className = '';
