@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase.js';
+import { showToast } from '../utils/toast.js';
 import { escapeHtml, safeImageUrl } from '../utils/html.js';
 import { router } from '../lib/router.js';
 import { getUserProfile } from '../main.js';
@@ -70,7 +71,7 @@ export function renderSidebar() {
           </svg>
           <span>My Profile</span>
         </a>
-        <a href="/search" class="nav-item ${window.location.pathname === '/search' ? 'active' : ''}" onclick="navigateTo(event, '/search')">
+        <a href="/discover" class="nav-item ${window.location.pathname === '/discover' || window.location.pathname === '/search' ? 'active' : ''}" onclick="navigateTo(event, '/discover')">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
             <circle cx="9" cy="7" r="4"/>
@@ -85,6 +86,24 @@ export function renderSidebar() {
           </svg>
           <span>Messages</span>
           <span class="nav-badge hidden" id="message-badge">0</span>
+        </a>
+        <a href="/connections" class="nav-item ${window.location.pathname === '/connections' ? 'active' : ''}" onclick="navigateTo(event, '/connections')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+            <circle cx="8.5" cy="7" r="3"/>
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+          </svg>
+          <span>Connections</span>
+        </a>
+        <a href="/connection-requests" class="nav-item ${window.location.pathname === '/connection-requests' ? 'active' : ''}" onclick="navigateTo(event, '/connection-requests')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M4 4h16v16H4z"/>
+            <path d="M8 8h8"/>
+            <path d="M8 12h8"/>
+            <path d="M8 16h5"/>
+          </svg>
+          <span>Requests</span>
         </a>
         <a href="/settings" class="nav-item ${window.location.pathname === '/settings' ? 'active' : ''}" onclick="navigateTo(event, '/settings')">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -303,5 +322,13 @@ export function setupSidebarHandlers() {
     await supabase.auth.signOut();
     showToast('Logged out successfully', 'success');
     router.navigate('/');
+  };
+
+  window.goBack = () => {
+    if (window.history.length > 1) {
+      window.history.back();
+    } else {
+      router.navigate('/dashboard');
+    }
   };
 }

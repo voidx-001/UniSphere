@@ -9,6 +9,8 @@ import { escapeHtml, safeImageUrl } from '../utils/html.js';
 let conversations = [];
 let currentChat = null;
 let messagesInterval = null;
+let lastMessageAt = null;
+let lastMessageId = null;
 
 export async function renderMessages() {
   const app = document.getElementById('app');
@@ -572,6 +574,8 @@ function renderEmptyConversations() {
 
 async function openConversation(currentUser, otherUser) {
   currentChat = { currentUser, otherUser };
+  lastMessageAt = null;
+  lastMessageId = null;
 
   // Update UI
   const placeholder = document.getElementById('chat-placeholder');
@@ -629,28 +633,52 @@ async function openConversation(currentUser, otherUser) {
   `;
 
   // Load messages
-  await loadMessages(currentUser.id, otherUser.id);
+  await loadMessages(currentUser.id, otherUser.id, { reset: true });
 
   // Start polling for new messages
   startMessagePolling(currentUser.id, otherUser.id);
 }
 
-async function loadMessages(currentUserId, otherUserId) {
-  const { data, error } = await supabase
+async function loadMessages(currentUserId, otherUserId, { reset = false } = {}) {
+  const messagesContainer = document.getElementById('chat-messages');
+  if (!messagesContainer) return;
+
+  let query = supabase
     .from('messages')
     .select('*')
     .or(`and(sender_id.eq.${currentUserId},receiver_id.eq.${otherUserId}),and(sender_id.eq.${otherUserId},receiver_id.eq.${currentUserId})`)
     .order('created_at', { ascending: true });
 
-  const messagesContainer = document.getElementById('chat-messages');
+  if (!reset && lastMessageAt) {
+    query = query.gt('created_at', lastMessageAt);
+  }
+
+  const { data, error } = await query.limit(100);
+
+  if (error) {
+    console.error('Failed to load messages', error);
+    return;
+  }
 
   if (!data || data.length === 0) {
-    messagesContainer.innerHTML = `
-      <div class="messages-date-separator">Start of conversation</div>
-    `;
-  } else {
-    messagesContainer.innerHTML = data.map(msg => renderMessage(msg, currentUserId)).join('');
+    if (reset) {
+      messagesContainer.innerHTML = `
+        <div class="messages-date-separator">Start of conversation</div>
+      `;
+    }
+    return;
   }
+
+  if (reset) {
+    messagesContainer.innerHTML = data.map(msg => renderMessage(msg, currentUserId)).join('');
+  } else {
+    const newMessages = data.map(msg => renderMessage(msg, currentUserId)).join('');
+    messagesContainer.insertAdjacentHTML('beforeend', newMessages);
+  }
+
+  const latestMessage = data[data.length - 1];
+  lastMessageAt = latestMessage.created_at;
+  lastMessageId = latestMessage.id;
 
   // Scroll to bottom
   messagesContainer.scrollTop = messagesContainer.scrollHeight;
@@ -682,6 +710,8 @@ function startMessagePolling(currentUserId, otherUserId) {
 
 function closeChat() {
   currentChat = null;
+  lastMessageAt = null;
+  lastMessageId = null;
   if (messagesInterval) {
     clearInterval(messagesInterval);
     messagesInterval = null;
@@ -697,36 +727,38 @@ async function markMessagesAsRead(currentUserId, otherUserId) {
     .eq('read', false);
 }
 
-window.sendMessage = async () => {
-  const input = document.getElementById('message-input');
-  const message = input.value.trim();
+if (typeof window !== 'undefined') {
+  window.sendMessage = async () => {
+    const input = document.getElementById('message-input');
+    const message = input.value.trim();
 
-  if (!message || !currentChat) return;
+    if (!message || !currentChat) return;
 
-  input.value = '';
+    input.value = '';
 
-  const { error } = await supabase
-    .from('messages')
-    .insert({
-      sender_id: currentChat.currentUser.id,
-      receiver_id: currentChat.otherUser.id,
-      message
-    });
+    const { error } = await supabase
+      .from('messages')
+      .insert({
+        sender_id: currentChat.currentUser.id,
+        receiver_id: currentChat.otherUser.id,
+        message
+      });
 
-  if (error) {
-    showToast('Failed to send message', 'error');
-    return;
-  }
+    if (error) {
+      showToast('Failed to send message', 'error');
+      return;
+    }
 
-  await loadMessages(currentChat.currentUser.id, currentChat.otherUser.id);
-};
+    await loadMessages(currentChat.currentUser.id, currentChat.otherUser.id);
+  };
 
-window.handleMessageKeydown = (e) => {
-  if (e.key === 'Enter' && !e.shiftKey) {
-    e.preventDefault();
-    window.sendMessage();
-  }
-};
+  window.handleMessageKeydown = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      window.sendMessage();
+    }
+  };
+}
 
 function formatTime(dateStr) {
   const date = new Date(dateStr);

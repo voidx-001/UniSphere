@@ -29,6 +29,17 @@ test('signup payload omits metadata so older triggers do not crash', () => {
   assert.equal('options' in payload, false);
 });
 
+test('maps duplicate email signup errors to a friendly message', () => {
+  const message = getSignupErrorMessage({ message: 'User already registered with this email' });
+  assert.equal(message, 'That email is already registered. Use a different email or sign in instead.');
+});
+
+test('backend migration exposes email availability check for registration', () => {
+  const migrationPath = path.join(process.cwd(), 'supabase', 'migrations', '20260627193000_004_sync_and_harden_backend.sql');
+  const migration = readFileSync(migrationPath, 'utf8');
+  assert.match(migration, /CREATE OR REPLACE FUNCTION public\.is_email_available\(candidate text\)/);
+});
+
 test('backend migration auto-confirms new auth users so signup does not require email verification', () => {
   const migrationPath = path.join(process.cwd(), 'supabase', 'migrations', '20260627193000_004_sync_and_harden_backend.sql');
   const migration = readFileSync(migrationPath, 'utf8');

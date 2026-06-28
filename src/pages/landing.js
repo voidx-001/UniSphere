@@ -1,4 +1,13 @@
-import { router } from '../lib/router.js';
+const isBrowserRuntime =
+  typeof window !== 'undefined' &&
+  typeof document !== 'undefined' &&
+  typeof import.meta !== 'undefined' &&
+  'env' in import.meta &&
+  import.meta.env?.SSR !== true;
+
+if (isBrowserRuntime) {
+  import('../styles/landing.css');
+}
 
 export async function renderLanding() {
   const app = document.getElementById('app');
@@ -37,7 +46,7 @@ export async function renderLanding() {
             <button class="btn btn-primary" onclick="window.router.navigate('/register')">Get Started</button>
           </div>
 
-          <button class="mobile-menu-btn hide-tablet-up">
+          <button class="mobile-menu-btn hide-tablet-up" id="mobile-menu-open" aria-label="Open menu">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <line x1="3" y1="6" x2="21" y2="6"/>
               <line x1="3" y1="12" x2="21" y2="12"/>
@@ -46,6 +55,38 @@ export async function renderLanding() {
           </button>
         </div>
       </nav>
+
+      <div class="mobile-drawer" id="mobile-drawer">
+        <div class="mobile-drawer-backdrop" id="mobile-drawer-close"></div>
+        <div class="mobile-drawer-panel">
+          <div class="nav-logo">
+            <div class="logo-icon">
+              <svg viewBox="0 0 32 32" fill="none">
+                <circle cx="16" cy="16" r="14" stroke="url(#gradM)" stroke-width="2"/>
+                <circle cx="10" cy="12" r="3" fill="url(#gradM)"/>
+                <circle cx="22" cy="12" r="3" fill="url(#gradM)"/>
+                <circle cx="16" cy="21" r="3" fill="url(#gradM)"/>
+                <defs>
+                  <linearGradient id="gradM" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" style="stop-color:#3b82f6"/>
+                    <stop offset="100%" style="stop-color:#a855f7"/>
+                  </linearGradient>
+                </defs>
+              </svg>
+            </div>
+            <span class="logo-text">UniSphere</span>
+          </div>
+          <nav class="mobile-drawer-links">
+            <a href="#features" onclick="closeMobileMenu()">Features</a>
+            <a href="#about" onclick="closeMobileMenu()">About</a>
+            <a href="#contact" onclick="closeMobileMenu()">Contact</a>
+          </nav>
+          <div class="mobile-drawer-actions">
+            <button class="btn btn-secondary btn-lg" onclick="closeMobileMenu(); window.router.navigate('/login')">Login</button>
+            <button class="btn btn-primary btn-lg" onclick="closeMobileMenu(); window.router.navigate('/register')">Get Started</button>
+          </div>
+        </div>
+      </div>
 
       <!-- Hero Section -->
       <section class="hero-section">
@@ -94,25 +135,59 @@ export async function renderLanding() {
               </div>
             </div>
           </div>
-          <div class="hero-image fade-in">
-            <div class="hero-mockup">
-              <div class="mockup-card glass-card">
-                <div class="mockup-header">
-                  <div class="mockup-dots">
-                    <span></span><span></span><span></span>
-                  </div>
+          <div class="hero-preview fade-in">
+            <div class="floating-card floating-card-1">
+              <div class="float-avatar">MK</div>
+              <div class="float-text">
+                <strong>Muhammad Khan</strong>
+                <span>Sent you a connection</span>
+              </div>
+            </div>
+            <div class="floating-card floating-card-2">
+              <div class="float-avatar" style="background: linear-gradient(135deg, #f59e0b, #ef4444)">FA</div>
+              <div class="float-text">
+                <strong>Fatima Ahmed</strong>
+                <span>3 mutual connections</span>
+              </div>
+            </div>
+            <div class="phone-frame">
+              <div class="phone-notch"><span></span><span></span><span></span></div>
+              <div class="phone-screen">
+                <div class="mock-feed-header">
+                  <strong>UniSphere Feed</strong>
+                  <span class="mock-post-meta">Live</span>
                 </div>
-                <div class="mockup-content">
-                  <div class="mockup-avatar">
-                    <span>AS</span>
+                <div class="mock-stories">
+                  ${['You', 'Ali', 'Sara', 'Omar', 'Zain'].map((name, i) => `
+                    <div class="mock-story">
+                      <div class="mock-story-ring">
+                        <div class="mock-story-avatar">${name === 'You' ? '+' : name.slice(0, 2)}</div>
+                      </div>
+                      <span class="mock-story-label">${name}</span>
+                    </div>
+                  `).join('')}
+                </div>
+                <div class="mock-post">
+                  <div class="mock-post-head">
+                    <div class="mock-post-avatar">AS</div>
+                    <div>
+                      <strong style="font-size:0.75rem">Ayesha Siddiqui</strong>
+                      <div class="mock-post-meta">NUST · 2h ago</div>
+                    </div>
                   </div>
-                  <div class="mockup-info">
-                    <div class="mockup-name"></div>
-                    <div class="mockup-meta"></div>
+                  <p class="mock-post-body">Looking for CS study partners for the midterms. Anyone from semester 5?</p>
+                  <div class="mock-post-actions"><span>♥ 24</span><span>💬 8</span><span>↗ Share</span></div>
+                </div>
+                <div class="mock-post">
+                  <div class="mock-post-head">
+                    <div class="mock-post-avatar" style="background:linear-gradient(135deg,#a855f7,#3b82f6)">HR</div>
+                    <div>
+                      <strong style="font-size:0.75rem">Hassan Raza</strong>
+                      <div class="mock-post-meta">LUMS · 5h ago</div>
+                    </div>
                   </div>
-                  <div class="mockup-actions">
-                    <div class="mockup-btn"></div>
-                  </div>
+                  <p class="mock-post-body">Great turnout at the campus career fair today! Met so many talented peers.</p>
+                  <div class="mock-post-actions"><span>♥ 41</span><span>💬 12</span><span>↗ Share</span></div>
                 </div>
               </div>
             </div>
@@ -241,7 +316,7 @@ export async function renderLanding() {
                   <h4>Muhammad Khan</h4>
                   <p>NUST, Computer Science</p>
                 </div>
-                <div class="about-card card" style="margin-top: 60px">
+                <div class="about-card card">
                   <div class="about-card-icon avatar-lg">
                     <span style="background: linear-gradient(135deg, #f59e0b 0%, #ef4444 100%)">FA</span>
                   </div>
@@ -255,7 +330,7 @@ export async function renderLanding() {
       </section>
 
       <!-- CTA Section -->
-      <section class="cta-section">
+      <section id="contact" class="cta-section">
         <div class="container">
           <div class="cta-card glass-card">
             <h2 class="cta-title">Ready to Expand Your Network?</h2>
@@ -320,533 +395,23 @@ export async function renderLanding() {
         </div>
       </footer>
     </div>
-
-    <style>
-      .landing-page {
-        min-height: 100vh;
-        background: var(--bg-primary);
-      }
-
-      /* Navigation */
-      .landing-nav {
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        z-index: 100;
-        padding: var(--space-4) 0;
-        border-radius: 0;
-        border: none;
-        border-bottom: 1px solid rgba(255,255,255,0.1);
-      }
-
-      .nav-container {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-      }
-
-      .nav-logo {
-        display: flex;
-        align-items: center;
-        gap: var(--space-2);
-        color: var(--text-primary);
-        font-weight: 600;
-        font-size: var(--font-size-lg);
-      }
-
-      .logo-icon {
-        width: 36px;
-        height: 36px;
-      }
-
-      .logo-icon svg {
-        width: 100%;
-        height: 100%;
-      }
-
-      .nav-links {
-        display: flex;
-        gap: var(--space-8);
-      }
-
-      .nav-link {
-        color: var(--text-secondary);
-        font-weight: 500;
-        transition: color var(--transition-fast);
-      }
-
-      .nav-link:hover {
-        color: var(--text-primary);
-      }
-
-      .nav-actions {
-        display: flex;
-        gap: var(--space-2);
-      }
-
-      .mobile-menu-btn {
-        color: var(--text-primary);
-        padding: var(--space-2);
-      }
-
-      /* Hero Section */
-      .hero-section {
-        position: relative;
-        min-height: 100vh;
-        display: flex;
-        align-items: center;
-        padding: 120px 0 80px;
-        overflow: hidden;
-      }
-
-      .hero-bg {
-        position: absolute;
-        inset: 0;
-        pointer-events: none;
-      }
-
-      .hero-gradient {
-        position: absolute;
-        top: -50%;
-        right: -20%;
-        width: 80%;
-        height: 150%;
-        background: radial-gradient(ellipse at center, rgba(59, 130, 246, 0.15) 0%, transparent 70%);
-      }
-
-      .hero-pattern {
-        position: absolute;
-        inset: 0;
-        background-image: radial-gradient(rgba(59, 130, 246, 0.05) 1px, transparent 1px);
-        background-size: 40px 40px;
-      }
-
-      .hero-container {
-        display: grid;
-        grid-template-columns: 1fr;
-        gap: var(--space-12);
-        align-items: center;
-      }
-
-      @media (min-width: 1024px) {
-        .hero-container {
-          grid-template-columns: 1fr 1fr;
-        }
-      }
-
-      .hero-content {
-        position: relative;
-        z-index: 1;
-      }
-
-      .hero-badge {
-        margin-bottom: var(--space-4);
-      }
-
-      .hero-title {
-        font-size: clamp(2rem, 5vw, var(--font-size-5xl));
-        font-weight: 700;
-        line-height: var(--line-height-tight);
-        margin-bottom: var(--space-6);
-        color: var(--text-primary);
-      }
-
-      .gradient-text {
-        background: var(--gradient-primary);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
-      }
-
-      .hero-subtitle {
-        font-size: var(--font-size-lg);
-        color: var(--text-secondary);
-        line-height: var(--line-height-relaxed);
-        margin-bottom: var(--space-8);
-        max-width: 540px;
-      }
-
-      .hero-actions {
-        display: flex;
-        flex-wrap: wrap;
-        gap: var(--space-4);
-        margin-bottom: var(--space-10);
-      }
-
-      .hero-stats {
-        display: flex;
-        align-items: center;
-        gap: var(--space-6);
-        flex-wrap: wrap;
-      }
-
-      .stat-item {
-        text-align: center;
-      }
-
-      .stat-number {
-        display: block;
-        font-size: var(--font-size-2xl);
-        font-weight: 700;
-        color: var(--text-primary);
-      }
-
-      .stat-label {
-        font-size: var(--font-size-sm);
-        color: var(--text-tertiary);
-      }
-
-      .stat-divider {
-        width: 1px;
-        height: 40px;
-        background: var(--border-color);
-      }
-
-      .hero-image {
-        position: relative;
-      }
-
-      .hero-mockup {
-        position: relative;
-        perspective: 1000px;
-      }
-
-      .mockup-card {
-        padding: var(--space-6);
-        max-width: 320px;
-        margin: 0 auto;
-        transform: rotateY(-5deg) rotateX(5deg);
-        transition: transform var(--transition-slow);
-      }
-
-      .mockup-card:hover {
-        transform: rotateY(0) rotateX(0);
-      }
-
-      .mockup-header {
-        margin-bottom: var(--space-4);
-      }
-
-      .mockup-dots {
-        display: flex;
-        gap: var(--space-2);
-      }
-
-      .mockup-dots span {
-        width: 12px;
-        height: 12px;
-        border-radius: var(--radius-full);
-        background: var(--bg-tertiary);
-      }
-
-      .mockup-dots span:first-child { background: var(--error-500); }
-      .mockup-dots span:nth-child(2) { background: var(--warning-500); }
-      .mockup-dots span:last-child { background: var(--success-500); }
-
-      .mockup-content {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: var(--space-4);
-      }
-
-      .mockup-avatar {
-        width: 64px;
-        height: 64px;
-        border-radius: var(--radius-full);
-        background: var(--gradient-primary);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: white;
-        font-weight: 600;
-        font-size: var(--font-size-lg);
-      }
-
-      .mockup-info {
-        width: 100%;
-        text-align: center;
-      }
-
-      .mockup-name {
-        width: 60%;
-        height: 16px;
-        background: var(--bg-tertiary);
-        border-radius: var(--radius-sm);
-        margin: 0 auto var(--space-2);
-      }
-
-      .mockup-meta {
-        width: 40%;
-        height: 12px;
-        background: var(--bg-tertiary);
-        border-radius: var(--radius-sm);
-        margin: 0 auto;
-      }
-
-      .mockup-actions {
-        width: 100%;
-      }
-
-      .mockup-btn {
-        height: 40px;
-        background: var(--gradient-primary);
-        border-radius: var(--radius-lg);
-      }
-
-      /* Features Section */
-      .features-section {
-        padding: var(--space-20) 0;
-        background: var(--bg-secondary);
-      }
-
-      .section-header {
-        text-align: center;
-        margin-bottom: var(--space-16);
-      }
-
-      .section-title {
-        font-size: var(--font-size-3xl);
-        font-weight: 700;
-        margin-bottom: var(--space-4);
-        color: var(--text-primary);
-      }
-
-      .section-subtitle {
-        font-size: var(--font-size-lg);
-        color: var(--text-secondary);
-        max-width: 600px;
-        margin: 0 auto;
-      }
-
-      .features-grid {
-        display: grid;
-        grid-template-columns: 1fr;
-        gap: var(--space-6);
-      }
-
-      @media (min-width: 768px) {
-        .features-grid {
-          grid-template-columns: repeat(2, 1fr);
-        }
-      }
-
-      @media (min-width: 1024px) {
-        .features-grid {
-          grid-template-columns: repeat(3, 1fr);
-        }
-      }
-
-      .feature-card {
-        padding: var(--space-8);
-        text-align: center;
-      }
-
-      .feature-icon {
-        width: 64px;
-        height: 64px;
-        margin: 0 auto var(--space-4);
-        background: var(--primary-50);
-        border-radius: var(--radius-xl);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-      }
-
-      [data-theme="dark"] .feature-icon {
-        background: rgba(59, 130, 246, 0.1);
-      }
-
-      .feature-icon svg {
-        width: 32px;
-        height: 32px;
-      }
-
-      .feature-title {
-        font-size: var(--font-size-lg);
-        font-weight: 600;
-        margin-bottom: var(--space-3);
-        color: var(--text-primary);
-      }
-
-      .feature-desc {
-        color: var(--text-secondary);
-        line-height: var(--line-height-relaxed);
-      }
-
-      /* About Section */
-      .about-section {
-        padding: var(--space-20) 0;
-      }
-
-      .about-content {
-        display: grid;
-        grid-template-columns: 1fr;
-        gap: var(--space-12);
-        align-items: center;
-      }
-
-      @media (min-width: 1024px) {
-        .about-content {
-          grid-template-columns: 1fr 1fr;
-        }
-      }
-
-      .about-text {
-        max-width: 540px;
-      }
-
-      .about-desc {
-        color: var(--text-secondary);
-        line-height: var(--line-height-relaxed);
-        margin-bottom: var(--space-6);
-      }
-
-      .about-features {
-        display: flex;
-        flex-direction: column;
-        gap: var(--space-3);
-      }
-
-      .about-feature {
-        display: flex;
-        align-items: center;
-        gap: var(--space-3);
-        color: var(--text-secondary);
-      }
-
-      .about-cards {
-        position: relative;
-      }
-
-      .about-card {
-        padding: var(--space-6);
-        text-align: center;
-        max-width: 240px;
-      }
-
-      .about-card h4 {
-        font-weight: 600;
-        margin: var(--space-4) 0 var(--space-2);
-        color: var(--text-primary);
-      }
-
-      .about-card p {
-        color: var(--text-tertiary);
-        font-size: var(--font-size-sm);
-      }
-
-      /* CTA Section */
-      .cta-section {
-        padding: var(--space-16) 0;
-      }
-
-      .cta-card {
-        padding: var(--space-12);
-        text-align: center;
-        background: var(--gradient-primary);
-        position: relative;
-        overflow: hidden;
-      }
-
-      .cta-card::before {
-        content: '';
-        position: absolute;
-        inset: 0;
-        background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
-      }
-
-      .cta-title {
-        font-size: var(--font-size-2xl);
-        font-weight: 700;
-        color: white;
-        margin-bottom: var(--space-4);
-        position: relative;
-      }
-
-      .cta-subtitle {
-        color: rgba(255, 255, 255, 0.9);
-        margin-bottom: var(--space-8);
-        position: relative;
-      }
-
-      .cta-actions .btn-primary {
-        background: white;
-        color: var(--primary-600);
-        position: relative;
-      }
-
-      .cta-actions .btn-primary:hover {
-        background: var(--gray-100);
-      }
-
-      /* Footer */
-      .landing-footer {
-        background: var(--bg-secondary);
-        padding: var(--space-16) 0 var(--space-8);
-      }
-
-      .footer-content {
-        display: grid;
-        grid-template-columns: 1fr;
-        gap: var(--space-10);
-        margin-bottom: var(--space-10);
-      }
-
-      @media (min-width: 768px) {
-        .footer-content {
-          grid-template-columns: 2fr 3fr;
-        }
-      }
-
-      .footer-logo {
-        display: flex;
-        align-items: center;
-        gap: var(--space-2);
-        font-weight: 600;
-        font-size: var(--font-size-lg);
-        color: var(--text-primary);
-        margin-bottom: var(--space-3);
-      }
-
-      .footer-tagline {
-        color: var(--text-tertiary);
-      }
-
-      .footer-links {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: var(--space-6);
-      }
-
-      .footer-column h4 {
-        font-weight: 600;
-        color: var(--text-primary);
-        margin-bottom: var(--space-4);
-      }
-
-      .footer-column a {
-        display: block;
-        color: var(--text-tertiary);
-        margin-bottom: var(--space-2);
-        font-size: var(--font-size-sm);
-      }
-
-      .footer-column a:hover {
-        color: var(--primary-600);
-      }
-
-      .footer-bottom {
-        padding-top: var(--space-8);
-        border-top: 1px solid var(--border-color);
-        text-align: center;
-        color: var(--text-muted);
-        font-size: var(--font-size-sm);
-      }
-    </style>
   `;
 
-  // Make router available globally for onclick handlers
-  window.router = router;
+  setupLandingHandlers();
+}
+
+function setupLandingHandlers() {
+  const drawer = document.getElementById('mobile-drawer');
+  const openBtn = document.getElementById('mobile-menu-open');
+  const closeBtn = document.getElementById('mobile-drawer-close');
+
+  window.openMobileMenu = () => drawer?.classList.add('open');
+  window.closeMobileMenu = () => drawer?.classList.remove('open');
+
+  openBtn?.addEventListener('click', openMobileMenu);
+  closeBtn?.addEventListener('click', closeMobileMenu);
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeMobileMenu();
+  });
 }

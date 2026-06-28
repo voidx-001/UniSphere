@@ -1,5 +1,3 @@
-import fetch from 'node-fetch';
-
 const url = 'https://clbjktgdpwdyzozigrej.supabase.co/auth/v1/signup?redirect_to=http://localhost:5188/login';
 const headers = {
   'Content-Type': 'application/json',

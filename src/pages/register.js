@@ -4,15 +4,22 @@ import { showToast } from '../utils/toast.js';
 import { getSignupErrorMessage } from '../utils/auth-errors.js';
 import { buildSupabaseSignupPayload } from '../utils/auth-signup.js';
 import { isValidUsername, validateRegisterStep } from '../utils/validation.js';
+import { getPostAuthRoute } from '../utils/auth-flow.js';
+
 
 export async function renderRegister() {
   const app = document.getElementById('app');
 
   app.innerHTML = `
     <div class="auth-page">
+      <div class="auth-bg-shapes" aria-hidden="true">
+        <div class="auth-shape auth-shape-1"></div>
+        <div class="auth-shape auth-shape-2"></div>
+        <div class="auth-shape auth-shape-3"></div>
+      </div>
       <div class="auth-container">
         <div class="auth-header">
-          <a href="/" class="auth-logo">
+          <a href="/" class="auth-logo" onclick="window.router.navigate('/'); return false;">
             <div class="logo-icon">
               <svg viewBox="0 0 32 32" fill="none">
                 <circle cx="16" cy="16" r="14" stroke="url(#grad)" stroke-width="2"/>
@@ -202,15 +209,6 @@ export async function renderRegister() {
         border-bottom: none;
         margin-bottom: var(--space-4);
       }
-        margin-bottom: var(--space-8);
-        padding-bottom: var(--space-6);
-        border-bottom: 1px solid var(--border-color);
-      }
-
-      .form-section:last-of-type {
-        border-bottom: none;
-        margin-bottom: var(--space-6);
-      }
 
       .form-section-title {
         font-size: var(--font-size-base);
@@ -317,50 +315,6 @@ export async function renderRegister() {
       .auth-footer a {
         font-weight: 500;
       }
-        display: flex;
-        align-items: center;
-        gap: var(--space-4);
-      }
-
-      .profile-preview {
-        width: 80px;
-        height: 80px;
-        border-radius: var(--radius-full);
-        background: var(--bg-tertiary);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        overflow: hidden;
-        flex-shrink: 0;
-      }
-
-      .profile-preview svg {
-        width: 40px;
-        height: 40px;
-        color: var(--text-muted);
-      }
-
-      .profile-preview img {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-      }
-
-      .upload-info {
-        display: flex;
-        flex-direction: column;
-        gap: var(--space-2);
-      }
-
-      .upload-hint {
-        font-size: var(--font-size-xs);
-        color: var(--text-muted);
-      }
-
-      .auth-submit {
-        width: 100%;
-        margin-top: var(--space-4);
-      }
 
       .btn-loading {
         display: inline-flex;
@@ -371,16 +325,6 @@ export async function renderRegister() {
       .btn-loading .spinner {
         width: 16px;
         height: 16px;
-      }
-
-      .auth-footer {
-        text-align: center;
-        margin-top: var(--space-6);
-        color: var(--text-secondary);
-      }
-
-      .auth-footer a {
-        font-weight: 500;
       }
     </style>
   `;
@@ -442,7 +386,29 @@ function setupFormHandlers() {
     }
   });
 
-  // Email validation - Supabase handles uniqueness check on submit
+  const emailInput = document.getElementById('email');
+  if (emailInput) {
+    emailInput.addEventListener('blur', async (e) => {
+      const email = e.target.value.trim();
+
+      if (email.length === 0) {
+        clearFieldError('email');
+        return;
+      }
+
+      if (!validateEmail(email)) {
+        showFieldError('email', 'That email looks sus. Use a real one.');
+        return;
+      }
+
+      const isUnique = await checkEmailUnique(email);
+      if (!isUnique) {
+        showFieldError('email', 'That email is already registered. Sign in or use another one.');
+      } else {
+        clearFieldError('email');
+      }
+    });
+  }
 
   // Confirm password check
   confirmPasswordInput.addEventListener('input', () => {
@@ -457,7 +423,7 @@ function setupFormHandlers() {
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
 
-    if (!validateForm()) return;
+    if (!await validateForm()) return;
 
     const submitBtn = form.querySelector('.auth-submit');
     submitBtn.disabled = true;
@@ -465,7 +431,12 @@ function setupFormHandlers() {
     submitBtn.querySelector('.btn-loading').classList.remove('hidden');
 
     try {
-      await handleRegistration(form);
+      const result = await handleRegistration(form);
+      if (result?.field) {
+        showFieldError(result.field, result.message);
+        getFieldElement(result.field)?.focus();
+        return;
+      }
     } catch (error) {
       showToast(error.message || 'Unable to create your account right now.', 'error');
     } finally {
@@ -482,7 +453,7 @@ function setupFormHandlers() {
   };
 }
 
-function validateForm() {
+async function validateForm() {
   const values = {
     fullname: getFieldValue('fullname'),
     username: getFieldValue('username'),
@@ -501,9 +472,22 @@ function validateForm() {
 
     const firstErrorField = Object.keys(result.errors)[0];
     const firstFieldEl = getFieldElement(firstErrorField);
+    if (firstErrorField === 'confirm-password' && !result.errors.email && !result.errors.username) {
+      getFieldElement('password')?.focus();
+    }
     if (firstFieldEl?.focus) firstFieldEl.focus();
     firstFieldEl?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     return false;
+  }
+
+  const email = values.email.trim();
+  if (email && validateEmail(email)) {
+    const isEmailUnique = await checkEmailUnique(email);
+    if (!isEmailUnique) {
+      showFieldError('email', 'That email is already registered. Sign in or use another one.');
+      getFieldElement('email')?.focus();
+      return false;
+    }
   }
 
   return true;
@@ -574,6 +558,19 @@ async function checkUsernameUnique(username) {
   return error ? true : data === true;
 }
 
+async function checkEmailUnique(email) {
+  const { data, error } = await supabase.rpc('is_email_available', {
+    candidate: email
+  });
+
+  if (error) {
+    console.warn('Email availability check failed:', error.message || error);
+    return true;
+  }
+
+  return data === true;
+}
+
 async function handleRegistration(form) {
   const formData = new FormData(form);
   const email = String(formData.get('email') || '').trim();
@@ -584,13 +581,17 @@ async function handleRegistration(form) {
   const { data: authData, error: authError } = await supabase.auth.signUp({
     ...buildSupabaseSignupPayload({ email, password }),
     options: {
-      emailRedirectTo: undefined,
-      data: undefined
+      emailRedirectTo: window.location.origin,
+      data: { full_name: fullName, username }
     }
   });
 
   if (authError) {
-    throw new Error(getSignupErrorMessage(authError));
+    const message = getSignupErrorMessage(authError);
+    if (/already registered|duplicate|already.*in use/i.test(message)) {
+      return { field: 'email', message };
+    }
+    throw new Error(message);
   }
 
   if (!authData.user) {
@@ -608,39 +609,11 @@ async function handleRegistration(form) {
     }
   }
 
-  if (session) {
-    const profileError = await createProfileForUser(user.id, email, fullName, username);
-    if (profileError) {
-      throw new Error(profileError.message || 'Unable to create your profile yet. Please log in after verifying your email.');
-    }
-  } else {
-    console.warn('No active session available to create a profile automatically.');
-  }
-
   window.localStorage.setItem('profile-onboarding-pending', 'true');
   window.localStorage.removeItem('profile-onboarding-complete');
 
-  showToast('Account created! We sent a verification email and you can continue setting up your profile.', 'success');
-  router.navigate('/dashboard');
+  const nextRoute = getPostAuthRoute({ hasSession: Boolean(session) });
+  showToast('Account created! Complete your profile in the dashboard.', 'success');
+  router.navigate(nextRoute);
 }
 
-async function createProfileForUser(userId, email, fullName, username) {
-  const profilePayload = {
-    id: userId,
-    full_name: fullName,
-    username,
-    university: null,
-    department: null,
-    semester: null,
-    bio: ''
-  };
-
-  const { error } = await supabase.from('profiles').insert([profilePayload]);
-  if (error) {
-    // If profile creation fails due to a duplicate username or database constraint,
-    // let the user know while still keeping the auth account creation path intact.
-    return error;
-  }
-
-  return null;
-}

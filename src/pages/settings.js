@@ -1,4 +1,4 @@
-import { getUserProfile, refreshUserProfile } from '../main.js';
+import { getCurrentUser, refreshUserProfile } from '../main.js';
 import { supabase } from '../lib/supabase.js';
 import { router } from '../lib/router.js';
 import { renderSidebar, setupSidebarHandlers } from '../components/sidebar.js';
@@ -577,13 +577,21 @@ function setupSettingsHandlers(profile) {
     btn.querySelector('.btn-loading').classList.remove('hidden');
 
     try {
+      const authUser = await supabase.auth.getUser();
+      const email = authUser?.data?.user?.email || getCurrentUser()?.email;
+
+      if (!email) {
+        showToast('Unable to verify your account email right now.', 'error');
+        return;
+      }
+
       const { error: reauthError } = await supabase.auth.signInWithPassword({
-        email: profile.email,
+        email,
         password: currentPassword
       });
 
       if (reauthError) {
-        showToast('Current password is incorrect', 'error');
+        showToast(reauthError.message || 'Current password is incorrect', 'error');
         return;
       }
 

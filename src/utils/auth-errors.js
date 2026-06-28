@@ -9,5 +9,9 @@ export function getSignupErrorMessage(error) {
     return 'Signup is temporarily rate-limited by Supabase. Please wait a few minutes and try again.';
   }
 
+  if (/already registered.*email|email.*already registered|duplicate.*email|already.*in use.*email|email.*already.*in use|account.*already exists/i.test(message)) {
+    return 'That email is already registered. Use a different email or sign in instead.';
+  }
+
   return message;
 }

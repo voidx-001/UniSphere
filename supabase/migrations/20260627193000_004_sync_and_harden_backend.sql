@@ -72,6 +72,23 @@ $$;
 REVOKE ALL ON FUNCTION public.is_username_available(text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.is_username_available(text) TO anon, authenticated;
 
+CREATE OR REPLACE FUNCTION public.is_email_available(candidate text)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT candidate ~ '^[^@\s]+@[^@\s]+\.[^@\s]+$'
+    AND NOT EXISTS (
+      SELECT 1 FROM auth.users
+      WHERE lower(email) = lower(candidate)
+    );
+$$;
+
+REVOKE ALL ON FUNCTION public.is_email_available(text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.is_email_available(text) TO anon, authenticated;
+
 -- Treat a connection as one relationship regardless of which student sent the
 -- first request. Rejected relationships may be requested again.
 CREATE OR REPLACE FUNCTION public.request_connection(target_user_id uuid)

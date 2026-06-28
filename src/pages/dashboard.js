@@ -1,4 +1,4 @@
-import { getUserProfile, refreshUserProfile } from '../main.js';
+import { getCurrentUser, getUserProfile, refreshUserProfile } from '../main.js';
 import { supabase } from '../lib/supabase.js';
 import { router } from '../lib/router.js';
 import { renderSidebar, setupSidebarHandlers } from '../components/sidebar.js';
@@ -8,6 +8,7 @@ import { escapeHtml, safeImageUrl } from '../utils/html.js';
 import { requestConnection } from '../utils/connections.js';
 import { loadUniversities } from '../utils/universities.js';
 import { departments, semesters } from '../utils/academic-options.js';
+import { fetchPostsWithUserLike, createPost, toggleLike } from '../utils/posts.js';
 
 export async function renderDashboard() {
   const app = document.getElementById('app');
@@ -18,6 +19,23 @@ export async function renderDashboard() {
     .join('')
     .substring(0, 2)
     .toUpperCase() || 'U';
+
+  const firstName = profile?.full_name?.split(' ')[0] || 'Student';
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? 'Good Morning' : hour < 18 ? 'Good Afternoon' : 'Good Evening';
+
+  const upcomingEvents = [
+    {
+      title: 'Campus Career Fair',
+      date: 'July 10',
+      location: profile?.university || 'Main Auditorium'
+    },
+    {
+      title: 'Study Group Mixer',
+      date: 'July 18',
+      location: 'Learning Commons'
+    }
+  ];
 
   // Fetch stats
   const stats = await fetchDashboardStats();
@@ -31,6 +49,9 @@ export async function renderDashboard() {
   // Fetch pending connections
   const pendingRequests = await fetchPendingRequests();
 
+  // Fetch campus feed posts
+  const feedPosts = await fetchFeedPosts(profile);
+
   const onboardingPending = window.localStorage.getItem('profile-onboarding-pending') === 'true';
   const universities = await loadUniversities();
 
@@ -43,22 +64,59 @@ export async function renderDashboard() {
         ${renderHeader('Dashboard', true)}
 
         <main class="dashboard-main">
-          <div class="container">
+          <div class="container container-feed">
 
-            <div class="welcome-card glass-card slide-up">
-              <div class="welcome-content">
-                <h2>Welcome back, ${escapeHtml(profile?.full_name?.split(' ')[0] || 'Student')}!</h2>
-                <p>Connect with students across Pakistan and expand your network.</p>
-              </div>
-              <div class="welcome-avatar">
-                <div class="avatar avatar-xl">
-                  ${safeImageUrl(profile?.profile_image)
-                    ? `<img src="${safeImageUrl(profile.profile_image)}" alt="${escapeHtml(profile.full_name)}">`
-                    : `<span>${initials}</span>`
-                  }
+            <section class="home-top slide-up">
+              <div class="welcome-banner">
+                <div class="welcome-banner-content">
+                  <div class="welcome-banner-text">
+                    <p class="welcome-label">${greeting}, ${escapeHtml(firstName)} 👋</p>
+                    <h2>Your campus feed</h2>
+                    <p class="welcome-subtitle">See what students are sharing, discover peers, and grow your network.</p>
+                  </div>
+                  <button class="welcome-avatar-btn" onclick="window.router.navigate('/profile')" aria-label="View profile">
+                    <div class="avatar avatar-xl">
+                      ${safeImageUrl(profile?.profile_image)
+                        ? `<img src="${safeImageUrl(profile.profile_image)}" alt="${escapeHtml(profile.full_name)}">`
+                        : `<span>${initials}</span>`
+                      }
+                    </div>
+                  </button>
                 </div>
+                <button class="home-search-bar" onclick="window.router.navigate('/discover')">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
+                  </svg>
+                  <span>Search students, universities, departments...</span>
+                </button>
               </div>
-            </div>
+
+              <div class="stats-row">
+                ${renderStatCard('Connections', stats.connections, '/connections', 'M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2 M8.5 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z M20 8v6 M23 11h-6')}
+                ${renderStatCard('Messages', stats.messages, '/messages', 'M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z')}
+                ${renderStatCard('Students', stats.students, '/discover', 'M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2 M23 21v-2a4 4 0 0 0-3-3.87 M16 3.13a4 4 0 0 1 0 7.75')}
+                ${renderStatCard('Requests', pendingRequests.length, '/connection-requests', 'M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2 M8.5 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z M20 8v6 M23 11h-6')}
+              </div>
+            </section>
+
+            <section class="stories-bar slide-up" style="animation-delay: 0.05s">
+              <div class="stories-track">
+                <button class="story-card story-card-add" onclick="window.router.navigate('/edit-profile')">
+                  <span class="story-ring story-ring-add">
+                    <span class="story-avatar story-avatar-add">+</span>
+                  </span>
+                  <span class="story-name">You</span>
+                </button>
+                ${[...suggestedStudents, ...recentStudents].slice(0, 8).map((student, i) => renderStoryCard(student, i)).join('')}
+              </div>
+            </section>
+
+            <nav class="shortcut-bar slide-up" style="animation-delay: 0.1s" aria-label="Quick shortcuts">
+              ${renderShortcut('Discover', '/discover', 'M21 21l-6-6m2-5a7 7 0 1 1-14 0 7 7 0 0 1 14 0z')}
+              ${renderShortcut('Messages', '/messages', 'M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 0 1-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z')}
+              ${renderShortcut('Connections', '/connections', 'M12 4.354a4 4 0 1 1 0 5.292M15 21H3v-1a6 6 0 0 1 12 0v1zm0 0h6v-1a6 6 0 0 0-9-5.197')}
+              ${renderShortcut('Profile', '/edit-profile', 'M11 5H6a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-5m-1.414-9.414a2 2 0 1 1 2.828 2.828L11.828 15H9v-2.828l8.586-8.586z')}
+            </nav>
 
             ${onboardingPending ? `
               <div class="onboarding-modal-overlay" id="profile-onboarding-modal">
@@ -128,103 +186,77 @@ export async function renderDashboard() {
               </div>
             ` : ''}
 
-            <!-- Stats Grid -->
-            <div class="stats-grid slide-up" style="animation-delay: 0.1s">
-              <div class="stat-card card">
-                <div class="stat-icon" style="background: var(--primary-50); color: var(--primary-600);">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-                    <circle cx="9" cy="7" r="4"/>
-                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-                    <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-                  </svg>
-                </div>
-                <div class="stat-info">
-                  <span class="stat-value">${stats.connections}</span>
-                  <span class="stat-label">Connections</span>
-                </div>
-              </div>
-
-              <div class="stat-card card">
-                <div class="stat-icon" style="background: var(--accent-50); color: var(--accent-600);">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-                  </svg>
-                </div>
-                <div class="stat-info">
-                  <span class="stat-value">${stats.messages}</span>
-                  <span class="stat-label">Messages</span>
-                </div>
-              </div>
-
-              <div class="stat-card card">
-                <div class="stat-icon" style="background: var(--success-50); color: var(--success-600);">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <circle cx="11" cy="11" r="8"/>
-                    <path d="M21 21l-4.35-4.35"/>
-                  </svg>
-                </div>
-                <div class="stat-info">
-                  <span class="stat-value">${stats.students}</span>
-                  <span class="stat-label">Students</span>
-                </div>
-              </div>
-
-              <div class="stat-card card">
-                <div class="stat-icon" style="background: var(--warning-50); color: var(--warning-600);">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-                    <polyline points="22 4 12 14.01 9 11.01"/>
-                  </svg>
-                </div>
-                <div class="stat-info">
-                  <span class="stat-value">${escapeHtml(profile?.university || 'University')}</span>
-                  <span class="stat-label">Your University</span>
-                </div>
-              </div>
-            </div>
-
-            <!-- Main Content Grid -->
             <div class="dashboard-grid">
-              <!-- Suggested Students -->
-              <section class="dashboard-section slide-up" style="animation-delay: 0.2s">
-                <div class="section-header">
-                  <h3>Suggested Students</h3>
-                  <a href="/search" class="btn btn-ghost btn-sm" onclick="navigateTo(event, '/search')">View All</a>
-                </div>
-                <div class="students-list">
-                  ${suggestedStudents.length > 0
-                    ? suggestedStudents.map(student => renderStudentCard(student)).join('')
-                    : '<p class="empty-text">No suggestions available. Complete your profile for better matches!</p>'
-                  }
-                </div>
-              </section>
+              <div class="feed-column">
+                ${renderPostComposer(profile, initials)}
 
-              <!-- Recent Students -->
-              <section class="dashboard-section slide-up" style="animation-delay: 0.3s">
-                <div class="section-header">
-                  <h3>Recently Joined</h3>
-                  <a href="/search" class="btn btn-ghost btn-sm" onclick="navigateTo(event, '/search')">View All</a>
-                </div>
-                <div class="students-list">
-                  ${recentStudents.length > 0
-                    ? recentStudents.map(student => renderStudentCard(student)).join('')
-                    : '<p class="empty-text">No recent students to show.</p>'
-                  }
-                </div>
-              </section>
-
-              <!-- Pending Requests -->
-              ${pendingRequests.length > 0 ? `
-                <section class="dashboard-section full-width slide-up" style="animation-delay: 0.4s">
+                <section class="feed-section slide-up" style="animation-delay: 0.15s">
                   <div class="section-header">
-                    <h3>Connection Requests (${pendingRequests.length})</h3>
+                    <div>
+                      <h3>Campus feed</h3>
+                      <p class="section-subtitle">Updates from students in your network</p>
+                    </div>
+                    <a href="/discover" class="btn btn-ghost btn-sm" onclick="navigateTo(event, '/discover')">Discover</a>
                   </div>
-                  <div class="requests-list">
-                    ${pendingRequests.map(req => renderRequestCard(req)).join('')}
+                  <div class="feed-list" id="feed-list">
+                    ${feedPosts.length > 0
+                      ? feedPosts.map((post, i) => renderFeedPost(post, i)).join('')
+                      : renderEmptyFeed()
+                    }
                   </div>
                 </section>
-              ` : ''}
+
+                <section class="events-section slide-up" style="animation-delay: 0.2s">
+                  <div class="section-header">
+                    <div>
+                      <h3>Campus events</h3>
+                      <p class="section-subtitle">What's happening near you</p>
+                    </div>
+                  </div>
+                  <div class="events-list">
+                    ${upcomingEvents.map(event => renderEventCard(event)).join('')}
+                  </div>
+                </section>
+              </div>
+
+              <aside class="sidebar-panel slide-up" style="animation-delay: 0.25s">
+                ${pendingRequests.length > 0 ? `
+                  <section class="panel-card">
+                    <div class="section-header">
+                      <h3>Connection requests</h3>
+                      <span class="badge-count">${pendingRequests.length}</span>
+                    </div>
+                    <div class="requests-list requests-list-stack">
+                      ${pendingRequests.map(req => renderRequestCard(req)).join('')}
+                    </div>
+                  </section>
+                ` : ''}
+
+                <section class="panel-card">
+                  <div class="section-header">
+                    <h3>People you may know</h3>
+                    <a href="/discover" class="btn btn-ghost btn-sm" onclick="navigateTo(event, '/discover')">See all</a>
+                  </div>
+                  <div class="people-list">
+                    ${suggestedStudents.length > 0
+                      ? suggestedStudents.map(student => renderPeopleRow(student)).join('')
+                      : '<p class="empty-text">Complete your profile for better suggestions.</p>'
+                    }
+                  </div>
+                </section>
+
+                <section class="panel-card">
+                  <div class="section-header">
+                    <h3>Recently joined</h3>
+                  </div>
+                  <div class="people-list">
+                    ${recentStudents.length > 0
+                      ? recentStudents.slice(0, 4).map(student => renderPeopleRow(student)).join('')
+                      : '<p class="empty-text">No new students yet.</p>'
+                    }
+                  </div>
+                </section>
+              </aside>
             </div>
           </div>
         </main>
@@ -234,6 +266,7 @@ export async function renderDashboard() {
 
   setupSidebarHandlers();
   setupHeaderHandlers();
+  setupComposer();
   if (onboardingPending) {
     setTimeout(() => {
       document.getElementById('profile-onboarding-modal')?.classList.add('visible');
@@ -255,13 +288,21 @@ function setupOnboardingForm() {
     const semester = formData.get('semester');
     const bio = formData.get('bio') || '';
 
-    const { data: profileData, error } = await supabase
+    const userId = getCurrentUser()?.id;
+    if (!userId) {
+      showToast('Your session is still loading. Please try again in a moment.', 'error');
+      return;
+    }
+
+    const { data, error } = await supabase
       .from('profiles')
       .update({ university, department, semester: Number(semester), bio })
-      .eq('id', (await supabase.auth.getUser()).data.user?.id);
+      .eq('id', userId)
+      .select()
+      .maybeSingle();
 
-    if (error) {
-      showToast(error.message, 'error');
+    if (error || !data) {
+      showToast(error?.message || 'Unable to save your profile right now.', 'error');
       return;
     }
 
@@ -278,6 +319,168 @@ function setupOnboardingForm() {
 
 function hideOnboardingModal() {
   document.getElementById('profile-onboarding-modal')?.remove();
+  window.localStorage.removeItem('profile-onboarding-pending');
+  window.localStorage.setItem('profile-onboarding-complete', 'true');
+}
+
+function renderStatCard(label, value, path, iconPath) {
+  return `
+    <button class="stat-pill" onclick="navigateTo(event, '${path}')">
+      <span class="stat-pill-icon">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="${iconPath}"/>
+        </svg>
+      </span>
+      <span class="stat-pill-value">${value}</span>
+      <span class="stat-pill-label">${label}</span>
+    </button>
+  `;
+}
+
+function renderShortcut(label, path, iconPath) {
+  return `
+    <button type="button" class="shortcut-chip" onclick="navigateTo(event, '${path}')">
+      <span class="shortcut-icon">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="${iconPath}"/>
+        </svg>
+      </span>
+      <span>${label}</span>
+    </button>
+  `;
+}
+
+function renderStoryCard(student, index) {
+  const initials = student.full_name?.split(' ')
+    .map(n => n[0])
+    .join('')
+    .substring(0, 2)
+    .toUpperCase() || 'S';
+  const colors = ['#3b82f6', '#a855f7', '#22c55e', '#f59e0b', '#ef4444', '#06b6d4'];
+  const ringColor = colors[index % colors.length];
+
+  return `
+    <button class="story-card" onclick="viewProfile('${student.id}')">
+      <span class="story-ring" style="--story-color: ${ringColor}">
+        <span class="story-avatar">
+          ${safeImageUrl(student.profile_image)
+            ? `<img src="${safeImageUrl(student.profile_image)}" alt="${escapeHtml(student.full_name)}">`
+            : `<span>${initials}</span>`
+          }
+        </span>
+      </span>
+      <span class="story-name">${escapeHtml((student.full_name || 'Student').split(' ')[0])}</span>
+    </button>
+  `;
+}
+
+function renderPostComposer(profile, initials) {
+  return `
+    <div class="post-composer social-composer slide-up" style="animation-delay: 0.12s">
+      <div class="composer-header">
+        <div class="composer-avatar">
+          ${safeImageUrl(profile?.profile_image)
+            ? `<img src="${safeImageUrl(profile.profile_image)}" alt="${escapeHtml(profile?.full_name || '')}">`
+            : `<span>${initials}</span>`
+          }
+        </div>
+        <button type="button" class="composer-trigger" id="composer-trigger">
+          What's on your mind, ${escapeHtml((profile?.full_name || 'Student').split(' ')[0])}?
+        </button>
+      </div>
+      <div class="composer-toolbar">
+        <button type="button" class="composer-tool" onclick="navigateTo(event, '/edit-profile')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+          Update bio
+        </button>
+        <button type="button" class="composer-tool" onclick="navigateTo(event, '/discover')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+          Find peers
+        </button>
+        <button type="button" class="composer-tool" onclick="navigateTo(event, '/messages')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          Message
+        </button>
+      </div>
+      <div class="composer-expanded hidden" id="composer-expanded">
+        <textarea id="composer-text" class="form-input" rows="3" maxlength="500" placeholder="Share an update with your campus network..."></textarea>
+        <div class="composer-actions">
+          <button type="button" class="btn btn-ghost btn-sm" id="composer-cancel">Cancel</button>
+          <button type="button" class="btn btn-primary btn-sm" id="composer-post">Post update</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderPeopleRow(student) {
+  const initials = student.full_name?.split(' ')
+    .map(n => n[0])
+    .join('')
+    .substring(0, 2)
+    .toUpperCase() || 'S';
+
+  return `
+    <div class="people-row">
+      <button class="people-row-main" onclick="viewProfile('${student.id}')">
+        <div class="people-avatar">
+          ${safeImageUrl(student.profile_image)
+            ? `<img src="${safeImageUrl(student.profile_image)}" alt="${escapeHtml(student.full_name)}">`
+            : `<span>${initials}</span>`
+          }
+        </div>
+        <div class="people-info">
+          <strong>${escapeHtml(student.full_name)}</strong>
+          <span>${escapeHtml(student.university || 'University')}</span>
+        </div>
+      </button>
+      <button class="btn btn-primary btn-sm" onclick="connectWith(event, '${student.id}')">Connect</button>
+    </div>
+  `;
+}
+
+function setupComposer() {
+  const trigger = document.getElementById('composer-trigger');
+  const expanded = document.getElementById('composer-expanded');
+  const cancel = document.getElementById('composer-cancel');
+  const post = document.getElementById('composer-post');
+  const textarea = document.getElementById('composer-text');
+
+  trigger?.addEventListener('click', () => {
+    expanded?.classList.remove('hidden');
+    trigger.classList.add('hidden');
+    textarea?.focus();
+  });
+
+  cancel?.addEventListener('click', () => {
+    expanded?.classList.add('hidden');
+    trigger?.classList.remove('hidden');
+    if (textarea) textarea.value = '';
+  });
+
+  post?.addEventListener('click', async () => {
+    const text = textarea?.value.trim();
+    if (!text) {
+      showToast('Write something before posting.', 'error');
+      return;
+    }
+
+    const submitBtn = post;
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<span class="spinner"></span> Posting...';
+
+    try {
+      await createPost(text);
+      window.localStorage.removeItem('profile-onboarding-pending');
+      window.localStorage.setItem('profile-onboarding-complete', 'true');
+      showToast('Posted to campus feed!', 'success');
+      router.navigate('/dashboard');
+    } catch (err) {
+      showToast(err.message || 'Unable to post right now.', 'error');
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = 'Post update';
+    }
+  });
 }
 
 function renderSidebarOverlay() {
@@ -344,6 +547,71 @@ function renderRequestCard(request) {
         <button class="btn btn-primary btn-sm" onclick="acceptRequest(event, '${request.id}')">Accept</button>
         <button class="btn btn-secondary btn-sm" onclick="rejectRequest(event, '${request.id}')">Decline</button>
       </div>
+    </div>
+  `;
+}
+
+function renderFeedPost(post, index = 0) {
+  const initials = post.author_name?.split(' ')
+    .map(n => n[0])
+    .join('')
+    .substring(0, 2)
+    .toUpperCase() || 'S';
+
+  const timeAgo = formatTimeAgo(post.created_at);
+  const likeClass = post.is_liked ? 'post-action-btn active' : 'post-action-btn';
+  const likeText = post.is_liked ? 'Liked' : 'Like';
+
+  return `
+    <article class="post-card social-post" data-post-id="${post.id}">
+      <header class="post-header">
+        <button class="post-author" onclick="viewProfile('${post.user_id}')">
+          <div class="composer-avatar">
+            ${safeImageUrl(post.author_profile_image)
+              ? `<img src="${safeImageUrl(post.author_profile_image)}" alt="${escapeHtml(post.author_name)}">`
+              : `<span>${initials}</span>`
+            }
+          </div>
+          <div class="post-author-info">
+            <strong>${escapeHtml(post.author_name)}</strong>
+            <span class="post-meta">@${escapeHtml(post.author_username || 'student')} · ${escapeHtml(post.author_university || 'University')}</span>
+          </div>
+        </button>
+        <span class="post-time">${timeAgo}</span>
+      </header>
+      <div class="post-content">${escapeHtml(post.content)}</div>
+      <div class="post-stats">${post.likes_count || 0} likes · ${post.comments_count || 0} comments</div>
+      <footer class="post-actions">
+        <button type="button" class="${likeClass}" onclick="togglePostLike(event, '${post.id}')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="${post.is_liked ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+          ${likeText}
+        </button>
+        <button type="button" class="post-action-btn" onclick="openPostComments('${post.id}')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          Comment
+        </button>
+        <button type="button" class="post-action-btn" onclick="connectWith(event, '${post.user_id}')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+          Connect
+        </button>
+      </footer>
+    </article>
+  `;
+}
+
+function renderEventCard(event) {
+  return `
+    <div class="event-card social-event">
+      <div class="event-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+        </svg>
+      </div>
+      <div class="event-info">
+        <strong>${escapeHtml(event.title)}</strong>
+        <p class="event-meta">${escapeHtml(event.date)} · ${escapeHtml(event.location)}</p>
+      </div>
+      <button class="btn btn-outline btn-sm" type="button">Interested</button>
     </div>
   `;
 }
@@ -455,56 +723,126 @@ async function fetchPendingRequests() {
   }
 }
 
-// Global handlers
-window.viewProfile = (userId) => {
-  router.navigate(`/profile?id=${userId}`);
-};
+async function fetchFeedPosts(profile) {
+  if (!profile) return [];
 
-window.connectWith = async (e, userId) => {
-  e.stopPropagation();
   try {
-    const status = await requestConnection(userId);
-    showToast(
-      status === 'accepted' ? 'You are already connected' : 'Connection request sent!',
-      status === 'accepted' ? 'info' : 'success'
-    );
-  } catch {
-    showToast('Failed to send connection request', 'error');
+    return await fetchPostsWithUserLike(profile.id, 50);
+  } catch (e) {
+    console.warn('Failed to load feed posts:', e.message || e);
+    return [];
   }
-};
+}
 
-window.acceptRequest = async (e, requestId) => {
-  e.stopPropagation();
+function renderEmptyFeed() {
+  return `
+    <div class="empty-state-card">
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+      </svg>
+      <p>No posts yet. Be the first to share something with your campus!</p>
+      <button class="btn btn-primary btn-sm" onclick="document.getElementById('composer-trigger')?.click()">Create a post</button>
+    </div>
+  `;
+}
 
-  const { error } = await supabase
-    .from('connections')
-    .update({ status: 'accepted' })
-    .eq('id', requestId);
+function formatTimeAgo(dateString) {
+  const date = new Date(dateString);
+  const now = new Date();
+  const seconds = Math.floor((now - date) / 1000);
 
-  if (error) {
-    showToast('Failed to accept request', 'error');
-  } else {
-    showToast('Connection accepted!', 'success');
-    router.navigate('/dashboard');
-  }
-};
+  if (seconds < 60) return 'Just now';
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days}d ago`;
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
 
-window.rejectRequest = async (e, requestId) => {
-  e.stopPropagation();
+// Global handlers
+if (typeof window !== 'undefined') {
+  window.viewProfile = (userId) => {
+    router.navigate(`/profile?id=${userId}`);
+  };
 
-  const { error } = await supabase
-    .from('connections')
-    .update({ status: 'rejected' })
-    .eq('id', requestId);
+  window.connectWith = async (e, userId) => {
+    e.stopPropagation();
+    try {
+      const status = await requestConnection(userId);
+      showToast(
+        status === 'accepted' ? 'You are already connected' : 'Connection request sent!',
+        status === 'accepted' ? 'info' : 'success'
+      );
+    } catch {
+      showToast('Failed to send connection request', 'error');
+    }
+  };
 
-  if (error) {
-    showToast('Failed to reject request', 'error');
-  } else {
-    router.navigate('/dashboard');
-  }
-};
+  window.acceptRequest = async (e, requestId) => {
+    e.stopPropagation();
 
-window.navigateTo = (e, path) => {
-  e.preventDefault();
-  router.navigate(path);
-};
+    const { error } = await supabase
+      .from('connections')
+      .update({ status: 'accepted' })
+      .eq('id', requestId);
+
+    if (error) {
+      showToast('Failed to accept request', 'error');
+    } else {
+      showToast('Connection accepted!', 'success');
+      router.navigate('/dashboard');
+    }
+  };
+
+  window.rejectRequest = async (e, requestId) => {
+    e.stopPropagation();
+
+    const { error } = await supabase
+      .from('connections')
+      .update({ status: 'rejected' })
+      .eq('id', requestId);
+
+    if (error) {
+      showToast('Failed to reject request', 'error');
+    } else {
+      router.navigate('/dashboard');
+    }
+  };
+
+  window.navigateTo = (e, path) => {
+    e.preventDefault();
+    router.navigate(path);
+  };
+
+  window.togglePostLike = async (e, postId) => {
+    e.stopPropagation();
+    const btn = e.currentTarget;
+    btn.disabled = true;
+
+    try {
+      const isLiked = await toggleLike(postId);
+      const card = btn.closest('.post-card');
+      const stats = card?.querySelector('.post-stats');
+      const currentLikes = parseInt(stats?.textContent || '0', 10);
+      const newLikes = isLiked ? currentLikes + 1 : Math.max(0, currentLikes - 1);
+      const currentComments = stats?.textContent.match(/(\d+) comments/)?.[1] || '0';
+      if (stats) stats.textContent = `${newLikes} likes · ${currentComments} comments`;
+
+      btn.classList.toggle('active', isLiked);
+      btn.innerHTML = `
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="${isLiked ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+        ${isLiked ? 'Liked' : 'Like'}
+      `;
+    } catch {
+      showToast('Unable to like post.', 'error');
+    } finally {
+      btn.disabled = false;
+    }
+  };
+
+  window.openPostComments = (postId) => {
+    router.navigate(`/post?id=${postId}`);
+  };
+}

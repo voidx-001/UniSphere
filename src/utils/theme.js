@@ -13,8 +13,17 @@ export function toggleTheme() {
   return next;
 }
 
-// Initialize on load
-initTheme();
+const isBrowserRuntime =
+  typeof window !== 'undefined' &&
+  typeof document !== 'undefined' &&
+  typeof import.meta !== 'undefined' &&
+  'env' in import.meta &&
+  import.meta.env?.SSR !== true;
+
+// Initialize on load in the browser only
+if (isBrowserRuntime) {
+  initTheme();
+}
 
 export function getTheme() {
   return document.documentElement.getAttribute('data-theme');
