@@ -6,6 +6,8 @@ const isBrowserRuntime =
   import.meta.env?.SSR !== true;
 
 if (isBrowserRuntime) {
+  // Landing relies on shared theme variables + global styles (glass-card, buttons, etc.)
+  import('../styles/main.css');
   import('../styles/landing.css');
 }
 
@@ -42,11 +44,11 @@ export async function renderLanding() {
           </div>
 
           <div class="nav-actions">
-            <button class="btn btn-ghost" onclick="window.router.navigate('/login')">Login</button>
-            <button class="btn btn-primary" onclick="window.router.navigate('/register')">Get Started</button>
+            <button class="btn btn-ghost" data-navigate="/login">Login</button>
+            <button class="btn btn-primary" data-navigate="/register">Get Started</button>
           </div>
 
-          <button class="mobile-menu-btn hide-tablet-up" id="mobile-menu-open" aria-label="Open menu">
+          <button class="mobile-menu-btn hide-tablet-up" id="mobile-menu-open" aria-label="Open menu" aria-expanded="false">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <line x1="3" y1="6" x2="21" y2="6"/>
               <line x1="3" y1="12" x2="21" y2="12"/>
@@ -77,13 +79,13 @@ export async function renderLanding() {
             <span class="logo-text">UniSphere</span>
           </div>
           <nav class="mobile-drawer-links">
-            <a href="#features" onclick="closeMobileMenu()">Features</a>
-            <a href="#about" onclick="closeMobileMenu()">About</a>
-            <a href="#contact" onclick="closeMobileMenu()">Contact</a>
+            <a href="#features" data-close-menu>Features</a>
+            <a href="#about" data-close-menu>About</a>
+            <a href="#contact" data-close-menu>Contact</a>
           </nav>
           <div class="mobile-drawer-actions">
-            <button class="btn btn-secondary btn-lg" onclick="closeMobileMenu(); window.router.navigate('/login')">Login</button>
-            <button class="btn btn-primary btn-lg" onclick="closeMobileMenu(); window.router.navigate('/register')">Get Started</button>
+            <button class="btn btn-secondary btn-lg" data-navigate="/login" data-close-menu>Login</button>
+            <button class="btn btn-primary btn-lg" data-navigate="/register" data-close-menu>Get Started</button>
           </div>
         </div>
       </div>
@@ -100,21 +102,17 @@ export async function renderLanding() {
               <span class="badge">Connect Across Universities</span>
             </div>
             <h1 class="hero-title">
-              Network with Students Across
-              <span class="gradient-text">Pakistan</span>
+              Connect with students <em>across Pakistan</em>
             </h1>
             <p class="hero-subtitle">
-              UniSphere connects students from different universities for collaboration,
-              networking, study discussions, and building lifelong friendships.
+              A private network for university students to collaborate on projects,
+              form study groups, and build meaningful academic connections.
             </p>
             <div class="hero-actions">
-              <button class="btn btn-primary btn-lg" onclick="window.router.navigate('/register')">
-                Start Networking
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M5 12h14M12 5l7 7-7 7"/>
-                </svg>
+              <button class="btn btn-primary btn-lg" data-navigate="/register">
+                Get Started
               </button>
-              <button class="btn btn-outline btn-lg" onclick="window.router.navigate('/login')">
+              <button class="btn btn-outline btn-lg" data-navigate="/login">
                 Sign In
               </button>
             </div>
@@ -136,59 +134,25 @@ export async function renderLanding() {
             </div>
           </div>
           <div class="hero-preview fade-in">
-            <div class="floating-card floating-card-1">
-              <div class="float-avatar">MK</div>
-              <div class="float-text">
-                <strong>Muhammad Khan</strong>
-                <span>Sent you a connection</span>
+            <div class="hero-visual" aria-hidden="true">
+              <div class="hero-visual-bg"></div>
+              <div class="hero-visual-ring"></div>
+              <div class="hero-orb hero-orb-1">
+                <div class="hero-orb-avatar" style="background: linear-gradient(135deg, #4f46e5, #7c3aed)">MK</div>
               </div>
-            </div>
-            <div class="floating-card floating-card-2">
-              <div class="float-avatar" style="background: linear-gradient(135deg, #f59e0b, #ef4444)">FA</div>
-              <div class="float-text">
-                <strong>Fatima Ahmed</strong>
-                <span>3 mutual connections</span>
+              <div class="hero-orb hero-orb-2">
+                <div class="hero-orb-avatar" style="background: linear-gradient(135deg, #0d9488, #0891b2)">FA</div>
               </div>
-            </div>
-            <div class="phone-frame">
-              <div class="phone-notch"><span></span><span></span><span></span></div>
-              <div class="phone-screen">
-                <div class="mock-feed-header">
-                  <strong>UniSphere Feed</strong>
-                  <span class="mock-post-meta">Live</span>
-                </div>
-                <div class="mock-stories">
-                  ${['You', 'Ali', 'Sara', 'Omar', 'Zain'].map((name, i) => `
-                    <div class="mock-story">
-                      <div class="mock-story-ring">
-                        <div class="mock-story-avatar">${name === 'You' ? '+' : name.slice(0, 2)}</div>
-                      </div>
-                      <span class="mock-story-label">${name}</span>
-                    </div>
-                  `).join('')}
-                </div>
-                <div class="mock-post">
-                  <div class="mock-post-head">
-                    <div class="mock-post-avatar">AS</div>
-                    <div>
-                      <strong style="font-size:0.75rem">Ayesha Siddiqui</strong>
-                      <div class="mock-post-meta">NUST · 2h ago</div>
-                    </div>
-                  </div>
-                  <p class="mock-post-body">Looking for CS study partners for the midterms. Anyone from semester 5?</p>
-                  <div class="mock-post-actions"><span>♥ 24</span><span>💬 8</span><span>↗ Share</span></div>
-                </div>
-                <div class="mock-post">
-                  <div class="mock-post-head">
-                    <div class="mock-post-avatar" style="background:linear-gradient(135deg,#a855f7,#3b82f6)">HR</div>
-                    <div>
-                      <strong style="font-size:0.75rem">Hassan Raza</strong>
-                      <div class="mock-post-meta">LUMS · 5h ago</div>
-                    </div>
-                  </div>
-                  <p class="mock-post-body">Great turnout at the campus career fair today! Met so many talented peers.</p>
-                  <div class="mock-post-actions"><span>♥ 41</span><span>💬 12</span><span>↗ Share</span></div>
-                </div>
+              <div class="hero-orb hero-orb-3">
+                <div class="hero-orb-avatar" style="background: linear-gradient(135deg, #ea580c, #dc2626)">AS</div>
+              </div>
+              <div class="hero-visual-center">
+                <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="16" cy="16" r="14"/>
+                  <circle cx="10" cy="12" r="3" fill="currentColor" stroke="none"/>
+                  <circle cx="22" cy="12" r="3" fill="currentColor" stroke="none"/>
+                  <circle cx="16" cy="21" r="3" fill="currentColor" stroke="none"/>
+                </svg>
               </div>
             </div>
           </div>
@@ -199,7 +163,7 @@ export async function renderLanding() {
       <section id="features" class="features-section">
         <div class="container">
           <div class="section-header">
-            <h2 class="section-title">Why Choose UniSphere?</h2>
+            <h2 class="section-title">Built for students</h2>
             <p class="section-subtitle">Everything you need to build meaningful academic connections</p>
           </div>
           <div class="features-grid">
@@ -273,12 +237,11 @@ export async function renderLanding() {
         <div class="container">
           <div class="about-content">
             <div class="about-text slide-up">
-              <h2 class="section-title">Connecting Pakistan's Future Leaders</h2>
+              <h2 class="section-title">A network that moves with you</h2>
               <p class="about-desc">
-                UniSphere was created with a simple mission: break down the barriers between universities
-                and enable students to collaborate, learn, and grow together. Whether you're looking
-                for study partners, professional networking, or just making new friends, UniSphere
-                makes it happen.
+                UniSphere brings together students from universities across Pakistan. Find study
+                partners for your courses, collaborate on projects, and grow a professional network
+                that lasts well beyond graduation.
               </p>
               <div class="about-features">
                 <div class="about-feature">
@@ -333,11 +296,11 @@ export async function renderLanding() {
       <section id="contact" class="cta-section">
         <div class="container">
           <div class="cta-card glass-card">
-            <h2 class="cta-title">Ready to Expand Your Network?</h2>
+            <h2 class="cta-title">Ready to find your people?</h2>
             <p class="cta-subtitle">Join thousands of students already connecting on UniSphere</p>
             <div class="cta-actions">
-              <button class="btn btn-primary btn-lg" onclick="window.router.navigate('/register')">
-                Create Free Account
+              <button class="btn btn-primary btn-lg" data-navigate="/register">
+                Create free account
               </button>
             </div>
           </div>
@@ -366,26 +329,26 @@ export async function renderLanding() {
                 </div>
                 <span>UniSphere</span>
               </div>
-              <p class="footer-tagline">Connecting Students Across Pakistan</p>
+              <p class="footer-tagline">The private network for Pakistani university students.</p>
             </div>
             <div class="footer-links">
               <div class="footer-column">
                 <h4>Platform</h4>
                 <a href="#features">Features</a>
                 <a href="#about">About Us</a>
-                <a href="/register" onclick="window.router.navigate('/register'); return false;">Get Started</a>
+                <a href="/register" data-navigate="/register">Get Started</a>
               </div>
               <div class="footer-column">
                 <h4>Support</h4>
                 <a href="#contact">Contact</a>
-                <a href="#">Help Center</a>
-                <a href="#">Privacy</a>
+                <span class="footer-link">Help Center</span>
+                <span class="footer-link">Privacy</span>
               </div>
               <div class="footer-column">
                 <h4>Connect</h4>
-                <a href="#">Twitter</a>
-                <a href="#">LinkedIn</a>
-                <a href="#">Instagram</a>
+                <span class="footer-link">Twitter</span>
+                <span class="footer-link">LinkedIn</span>
+                <span class="footer-link">Instagram</span>
               </div>
             </div>
           </div>
@@ -401,15 +364,46 @@ export async function renderLanding() {
 }
 
 function setupLandingHandlers() {
+  const appEl = document.getElementById('app');
   const drawer = document.getElementById('mobile-drawer');
   const openBtn = document.getElementById('mobile-menu-open');
   const closeBtn = document.getElementById('mobile-drawer-close');
 
-  window.openMobileMenu = () => drawer?.classList.add('open');
-  window.closeMobileMenu = () => drawer?.classList.remove('open');
+  function navigateTo(path) {
+    if (window.router?.navigate) {
+      window.router.navigate(path);
+    } else {
+      window.location.href = path;
+    }
+  }
+
+  function setMenuOpen(isOpen) {
+    drawer?.classList.toggle('open', isOpen);
+    openBtn?.setAttribute('aria-expanded', String(isOpen));
+  }
+
+  window.openMobileMenu = () => setMenuOpen(true);
+  window.closeMobileMenu = () => setMenuOpen(false);
 
   openBtn?.addEventListener('click', openMobileMenu);
   closeBtn?.addEventListener('click', closeMobileMenu);
+
+  appEl?.addEventListener('click', (e) => {
+    const navigateTarget = e.target.closest('[data-navigate]');
+    if (navigateTarget) {
+      e.preventDefault();
+      if (navigateTarget.hasAttribute('data-close-menu')) {
+        closeMobileMenu();
+      }
+      navigateTo(navigateTarget.dataset.navigate);
+      return;
+    }
+
+    const closeMenuTarget = e.target.closest('[data-close-menu]');
+    if (closeMenuTarget) {
+      closeMobileMenu();
+    }
+  });
 
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') closeMobileMenu();

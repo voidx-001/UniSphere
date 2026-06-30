@@ -28,29 +28,27 @@ export async function renderRegister() {
                 <circle cx="16" cy="21" r="3" fill="url(#grad)"/>
                 <defs>
                   <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" style="stop-color:#3b82f6"/>
-                    <stop offset="100%" style="stop-color:#a855f7"/>
+                    <stop offset="0%" style="stop-color:#4f46e5"/>
+                    <stop offset="100%" style="stop-color:#7c3aed"/>
                   </linearGradient>
                 </defs>
               </svg>
             </div>
             <span>UniSphere</span>
           </a>
-          <h1 class="auth-title">Create Account</h1>
+          <h1 class="auth-title">Create your account</h1>
           <p class="auth-subtitle">Join the student network across Pakistan</p>
-          <div class="auth-note">One quick account setup, then complete your profile inside the dashboard.</div>
         </div>
 
         <form id="register-form" class="auth-form">
           <div class="form-section">
-            <h3 class="form-section-title">Create your account</h3>
-
             <div class="form-row">
               <div class="form-group">
                 <label class="form-label" for="fullname">Full Name *</label>
                 <input type="text" id="fullname" name="fullname" class="form-input"
                   placeholder="Enter your full name" required>
                 <span class="form-error" id="fullname-error"></span>
+                <span class="form-success" id="fullname-success"></span>
               </div>
 
               <div class="form-group">
@@ -58,14 +56,17 @@ export async function renderRegister() {
                 <input type="text" id="username" name="username" class="form-input"
                   placeholder="Choose a username" required>
                 <span class="form-error" id="username-error"></span>
+                <span class="form-success" id="username-success"></span>
               </div>
             </div>
 
             <div class="form-group">
               <label class="form-label" for="email">Email Address *</label>
               <input type="email" id="email" name="email" class="form-input"
-                placeholder="your.email@university.edu" required>
+                placeholder="Enter your .edu or .edu.pk email" required>
+              <span class="form-hint" id="email-hint">Must be a university .edu or .edu.pk address</span>
               <span class="form-error" id="email-error"></span>
+              <span class="form-success" id="email-success"></span>
             </div>
 
             <div class="form-row">
@@ -81,6 +82,8 @@ export async function renderRegister() {
                     </svg>
                   </button>
                 </div>
+                <span class="form-error" id="password-error"></span>
+                <span class="form-success" id="password-success"></span>
                 <div class="password-strength">
                   <div class="strength-bar">
                     <span></span><span></span><span></span><span></span>
@@ -102,12 +105,13 @@ export async function renderRegister() {
                   </button>
                 </div>
                 <span class="form-error" id="confirm-password-error"></span>
+                <span class="form-success" id="confirm-password-success"></span>
               </div>
             </div>
           </div>
 
           <button type="submit" class="btn btn-primary btn-lg auth-submit">
-            <span class="btn-text">Create Account</span>
+            <span class="btn-text">Create account</span>
             <span class="btn-loading hidden">
               <span class="spinner"></span>
               <span>Creating...</span>
@@ -120,213 +124,6 @@ export async function renderRegister() {
         </div>
       </div>
     </div>
-
-    <style>
-      .auth-page {
-        min-height: 100vh;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: var(--space-8) var(--space-4);
-        background: var(--bg-secondary);
-      }
-
-      .auth-container {
-        width: 100%;
-        max-width: 640px;
-      }
-
-      .auth-header {
-        text-align: center;
-        margin-bottom: var(--space-8);
-      }
-
-      .auth-logo {
-        display: inline-flex;
-        align-items: center;
-        gap: var(--space-2);
-        color: var(--primary-700);
-        font-weight: 700;
-        font-size: var(--font-size-xl);
-        margin-bottom: var(--space-4);
-        padding: var(--space-2) var(--space-3);
-        background: rgba(59, 130, 246, 0.1);
-        border-radius: var(--radius-full);
-      }
-
-      .auth-title {
-        font-size: var(--font-size-3xl);
-        font-weight: 800;
-        color: var(--text-primary);
-        margin-bottom: var(--space-2);
-      }
-
-      .auth-subtitle {
-        color: var(--text-secondary);
-        max-width: 520px;
-        margin: 0 auto;
-      }
-
-      .auth-form {
-        background: var(--bg-primary);
-        padding: var(--space-8);
-        border-radius: var(--radius-2xl);
-        box-shadow: var(--shadow-xl);
-        max-width: 720px;
-        margin: 0 auto;
-        position: relative;
-        overflow: hidden;
-      }
-
-      .auth-note {
-        margin-top: var(--space-3);
-        max-width: 520px;
-        margin-left: auto;
-        margin-right: auto;
-        font-size: var(--font-size-sm);
-        color: var(--text-secondary);
-        background: rgba(59, 130, 246, 0.08);
-        border: 1px solid rgba(59, 130, 246, 0.16);
-        border-radius: var(--radius-xl);
-        padding: var(--space-4);
-      }
-
-      @media (max-width: 767px) {
-        .auth-form {
-          padding: var(--space-6);
-        }
-      }
-
-      .form-section {
-        margin-bottom: var(--space-6);
-        padding: var(--space-6);
-        background: var(--bg-secondary);
-        border-radius: var(--radius-xl);
-        border: 1px solid var(--border-color);
-      }
-
-      .form-section:last-of-type {
-        border-bottom: none;
-        margin-bottom: var(--space-4);
-      }
-
-      .form-section-title {
-        font-size: var(--font-size-base);
-        font-weight: 600;
-        color: var(--text-primary);
-        margin-bottom: var(--space-4);
-      }
-
-      .form-row {
-        display: grid;
-        grid-template-columns: 1fr;
-        gap: var(--space-4);
-      }
-
-      @media (min-width: 640px) {
-        .form-row {
-          grid-template-columns: 1fr 1fr;
-        }
-      }
-
-      .input-with-icon {
-        position: relative;
-      }
-
-      .input-with-icon .form-input {
-        padding-right: 44px;
-      }
-
-      .toggle-password {
-        position: absolute;
-        right: var(--space-3);
-        top: 50%;
-        transform: translateY(-50%);
-        color: var(--text-muted);
-        padding: var(--space-1);
-        transition: color var(--transition-fast);
-      }
-
-      .toggle-password:hover {
-        color: var(--text-secondary);
-      }
-
-      .password-strength {
-        margin-top: var(--space-3);
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: var(--space-3);
-      }
-
-      .strength-bar {
-        display: grid;
-        grid-template-columns: repeat(4, minmax(0, 1fr));
-        gap: var(--space-1);
-        flex: 1;
-        min-width: 120px;
-      }
-
-      .strength-bar span {
-        height: 5px;
-        background: var(--bg-tertiary);
-        border-radius: var(--radius-full);
-        transition: background var(--transition-fast);
-      }
-
-      .strength-bar.weak span:nth-child(1) {
-        background: var(--error-500);
-      }
-
-      .strength-bar.fair span:nth-child(1),
-      .strength-bar.fair span:nth-child(2) {
-        background: var(--warning-500);
-      }
-
-      .strength-bar.good span:nth-child(1),
-      .strength-bar.good span:nth-child(2),
-      .strength-bar.good span:nth-child(3) {
-        background: var(--primary-500);
-      }
-
-      .strength-bar.strong span {
-        background: var(--success-500);
-      }
-
-      .strength-text {
-        font-size: var(--font-size-xs);
-        color: var(--text-muted);
-        white-space: nowrap;
-      }
-
-      .auth-submit {
-        width: 100%;
-        margin-top: var(--space-5);
-        padding: var(--space-4) var(--space-6);
-        border-radius: var(--radius-full);
-      }
-
-      .auth-footer {
-        text-align: center;
-        margin-top: var(--space-6);
-        color: var(--text-secondary);
-      }
-
-      .auth-footer a {
-        font-weight: 500;
-      }
-
-      .btn-loading {
-        display: inline-flex;
-        align-items: center;
-        gap: var(--space-2);
-      }
-
-      .btn-loading .spinner {
-        width: 16px;
-        height: 16px;
-      }
-    </style>
   `;
 
   // Setup form handlers
@@ -352,72 +149,149 @@ function setupFormHandlers() {
     return;
   }
 
-  // Password strength checker
+  // Password real-time validation
   passwordInput.addEventListener('input', (e) => {
     const password = e.target.value;
     const strength = checkPasswordStrength(password);
     updateStrengthIndicator(strength);
-  });
-
-  // Username validation
-  usernameInput.addEventListener('blur', async (e) => {
-    const username = e.target.value.trim();
-
-    if (username.length === 0) {
-      clearFieldError('username');
-      return;
-    }
-
-    if (username.length < 3) {
-      showFieldError('username', 'Username gotta be 3+ chars.');
-      return;
-    }
-
-    if (!isValidUsername(username)) {
-      showFieldError('username', 'Use only letters, numbers, dots, and underscores.');
-      return;
-    }
-
-    const isUnique = await checkUsernameUnique(username);
-    if (!isUnique) {
-      showFieldError('username', 'That username is already taken. Pick another one.');
+    
+    if (password.length === 0) {
+      clearFieldError('password');
+      clearFieldSuccess('password');
+    } else if (password.length < 8) {
+      showFieldError('password', 'Password must be at least 8 characters.');
+      clearFieldSuccess('password');
+    } else if (password.length < 12 && !/[A-Z]/.test(password)) {
+      showFieldError('password', 'Add uppercase, lowercase, and numbers for a stronger password.');
+      clearFieldSuccess('password');
     } else {
-      clearFieldError('username');
+      clearFieldError('password');
+      showFieldSuccess('password', 'Looks good');
     }
   });
 
+  // Debounced real-time username availability check
+  let usernameDebounceTimer;
+  if (usernameInput) {
+    usernameInput.addEventListener('input', (e) => {
+      const username = e.target.value.trim();
+
+      if (username.length === 0) {
+        clearFieldError('username');
+        clearFieldSuccess('username');
+        clearTimeout(usernameDebounceTimer);
+        return;
+      }
+
+      if (username.length < 3) {
+        showFieldError('username', 'Username must be at least 3 characters.');
+        clearFieldSuccess('username');
+        clearTimeout(usernameDebounceTimer);
+        return;
+      }
+
+      if (!isValidUsername(username)) {
+        showFieldError('username', 'Usernames can only contain letters, numbers, dots, and underscores.');
+        clearFieldSuccess('username');
+        clearTimeout(usernameDebounceTimer);
+        return;
+      }
+
+      clearFieldError('username');
+      showFieldSuccess('username', 'Checking availability...');
+
+      clearTimeout(usernameDebounceTimer);
+      usernameDebounceTimer = setTimeout(async () => {
+        const isUnique = await checkUsernameUnique(username);
+        if (usernameInput.value.trim() !== username) return;
+
+        if (!isUnique) {
+          showFieldError('username', 'That username is already taken. Please choose another.');
+          clearFieldSuccess('username');
+        } else {
+          clearFieldError('username');
+          showFieldSuccess('username', 'Username is available');
+        }
+      }, 350);
+    });
+  }
+
+  // Debounced real-time email availability check
+  let emailDebounceTimer;
   const emailInput = document.getElementById('email');
   if (emailInput) {
-    emailInput.addEventListener('blur', async (e) => {
+    emailInput.addEventListener('input', (e) => {
       const email = e.target.value.trim();
 
       if (email.length === 0) {
         clearFieldError('email');
+        clearFieldSuccess('email');
+        clearTimeout(emailDebounceTimer);
         return;
       }
 
       if (!validateEmail(email)) {
-        showFieldError('email', 'That email looks sus. Use a real one.');
+        showFieldError('email', 'Please use your university .edu or .edu.pk email address.');
+        clearFieldSuccess('email');
+        clearTimeout(emailDebounceTimer);
         return;
       }
 
-      const isUnique = await checkEmailUnique(email);
-      if (!isUnique) {
-        showFieldError('email', 'That email is already registered. Sign in or use another one.');
-      } else {
-        clearFieldError('email');
-      }
+      clearFieldError('email');
+      showFieldSuccess('email', 'Checking availability...');
+
+      clearTimeout(emailDebounceTimer);
+      emailDebounceTimer = setTimeout(async () => {
+        const isUnique = await checkEmailUnique(email);
+        if (emailInput.value.trim() !== email) return;
+
+        if (!isUnique) {
+          showFieldError('email', 'That email is already registered. Sign in or use another email.');
+          clearFieldSuccess('email');
+        } else {
+          clearFieldError('email');
+          showFieldSuccess('email', 'Email is available');
+        }
+      }, 350);
     });
   }
 
-  // Confirm password check
+  // Confirm password real-time check
   confirmPasswordInput.addEventListener('input', () => {
     if (passwordInput.value !== confirmPasswordInput.value) {
       showFieldError('confirm-password', 'Passwords do not match');
+      clearFieldSuccess('confirm-password');
+    } else if (confirmPasswordInput.value.length > 0) {
+      clearFieldError('confirm-password');
+      showFieldSuccess('confirm-password', 'Passwords match!');
     } else {
       clearFieldError('confirm-password');
+      clearFieldSuccess('confirm-password');
     }
   });
+
+  // Full name real-time validation
+  const fullnameInput = document.getElementById('fullname');
+  if (fullnameInput) {
+    fullnameInput.addEventListener('input', (e) => {
+      const fullname = e.target.value.trim();
+      
+      if (fullname.length === 0) {
+        clearFieldError('fullname');
+        clearFieldSuccess('fullname');
+        return;
+      }
+      
+      if (fullname.length < 2) {
+        showFieldError('fullname', 'Name must be at least 2 characters.');
+        clearFieldSuccess('fullname');
+        return;
+      }
+
+      clearFieldError('fullname');
+      showFieldSuccess('fullname', 'Looks good');
+    });
+  }
 
   // Form submission
   form.addEventListener('submit', async (e) => {
@@ -495,10 +369,13 @@ async function validateForm() {
 
 function showFieldError(field, message) {
   const errorEl = document.getElementById(`${field}-error`);
+  const successEl = document.getElementById(`${field}-success`);
   const inputEl = getFieldElement(field);
   if (errorEl) errorEl.textContent = message;
+  if (successEl) successEl.textContent = '';
   if (inputEl) {
     inputEl.classList.add('error');
+    inputEl.classList.remove('success');
     if (field === 'terms') {
       inputEl.closest('.form-checkbox')?.classList.add('error');
     }
@@ -517,8 +394,29 @@ function clearFieldError(field) {
   }
 }
 
+function showFieldSuccess(field, message) {
+  const successEl = document.getElementById(`${field}-success`);
+  const errorEl = document.getElementById(`${field}-error`);
+  const inputEl = getFieldElement(field);
+  if (successEl) successEl.textContent = message;
+  if (errorEl) errorEl.textContent = '';
+  if (inputEl) {
+    inputEl.classList.add('success');
+    inputEl.classList.remove('error');
+  }
+}
+
+function clearFieldSuccess(field) {
+  const successEl = document.getElementById(`${field}-success`);
+  const inputEl = getFieldElement(field);
+  if (successEl) successEl.textContent = '';
+  if (inputEl) {
+    inputEl.classList.remove('success');
+  }
+}
+
 function validateEmail(email) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  return /^[^\s@]+@[^\s@]+\.edu(\.[^\s@]+)?$/.test(email);
 }
 
 function checkPasswordStrength(password) {

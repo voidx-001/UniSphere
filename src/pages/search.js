@@ -654,9 +654,9 @@ function renderResultCard(student) {
     .toUpperCase() || 'S';
 
   return `
-    <div class="result-card card" onclick="viewProfile('${student.id}')">
+    <div class="result-card card slide-up" onclick="viewProfile('${student.id}')">
       <div class="result-header">
-        <div class="result-avatar">
+        <div class="result-avatar avatar-lg">
           ${safeImageUrl(student.profile_image)
             ? `<img src="${safeImageUrl(student.profile_image)}" alt="${escapeHtml(student.full_name)}">`
             : `<span>${initials}</span>`
@@ -673,7 +673,7 @@ function renderResultCard(student) {
         <button class="btn btn-primary btn-sm" onclick="connectWith(event, '${student.id}')">
           Connect
         </button>
-        <button class="btn btn-secondary btn-sm" onclick="viewProfile('${student.id}')">
+        <button class="btn btn-outline btn-sm" onclick="viewProfile('${student.id}')">
           View Profile
         </button>
       </div>

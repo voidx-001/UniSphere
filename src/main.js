@@ -118,21 +118,41 @@ async function initAuth() {
 
 // Initialize routing
 async function init() {
-  await initAuth();
-  window.addEventListener('popstate', () => router.handleRoute());
+  console.log('[UniSphere] Initializing app...');
+  console.log('[UniSphere] DOM ready state:', document.readyState);
+  const appEl = document.getElementById('app');
+  console.log('[UniSphere] App element:', appEl);
+  
+  try {
+    await initAuth();
+    console.log('[UniSphere] Auth initialized');
+    
+    window.addEventListener('popstate', () => router.handleRoute());
 
-  const hash = window.location.hash || '';
-  const isRecoveryLink = hash.includes('type=recovery');
-  const onResetPage = window.location.pathname === '/reset-password';
+    const hash = window.location.hash || '';
+    const isRecoveryLink = hash.includes('type=recovery');
+    const onResetPage = window.location.pathname === '/reset-password';
 
-  if (isRecoveryLink && !onResetPage) {
-    router.navigate('/reset-password', false);
-    return;
+    if (isRecoveryLink && !onResetPage) {
+      router.navigate('/reset-password', false);
+      return;
+    }
+
+    console.log('[UniSphere] Handling route...');
+    await router.handleRoute();
+    console.log('[UniSphere] Route handled');
+  } catch (err) {
+    console.error('[UniSphere] Initialization failed:', err);
+    if (appEl) {
+      appEl.innerHTML = '<div style="padding: 20px; color: red;">Failed to load app. Check console for errors.</div>';
+    }
   }
-
-  await router.handleRoute();
 }
 
 if (isBrowserRuntime) {
-  init();
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
 }

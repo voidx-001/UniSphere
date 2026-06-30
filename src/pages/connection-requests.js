@@ -34,20 +34,49 @@ export async function renderConnectionRequests() {
   setupSidebarHandlers();
   setupHeaderHandlers();
 
-  const { data, error } = await supabase
+  const { data: connectionsData, error: connectionsError } = await supabase
     .from('connections')
-    .select(`
-      id,
-      requester_id,
-      receiver_id,
-      status,
-      profiles!connections_requester_id_fkey(id, full_name, username, university, department, profile_image)
-    `)
+    .select('id, requester_id, receiver_id, status')
     .or(`requester_id.eq.${profile.id},receiver_id.eq.${profile.id}`)
-    .in('status', ['pending']);
+    .eq('status', 'pending');
 
-  const received = (data || []).filter((item) => item.receiver_id === profile.id);
-  const sent = (data || []).filter((item) => item.requester_id === profile.id);
+  if (connectionsError) {
+    console.error('Failed to load connection requests', connectionsError);
+    return;
+  }
+
+  const pendingConnections = connectionsData || [];
+  const received = pendingConnections.filter((c) => c.receiver_id === profile.id);
+  const sent = pendingConnections.filter((c) => c.requester_id === profile.id);
+
+
+  const requesterIds = Array.from(new Set(
+    pendingConnections.map((c) => c.requester_id).filter(Boolean)
+  ));
+
+  const receiverIds = Array.from(new Set(
+    pendingConnections.map((c) => c.receiver_id).filter(Boolean)
+  ));
+
+  const allProfileIds = Array.from(new Set([...requesterIds, ...receiverIds]));
+
+  const { data: profilesData } = await supabase
+    .from('profiles')
+    .select('id, full_name, username, university, department, profile_image')
+    .in('id', allProfileIds);
+
+  const profilesById = new Map((profilesData || []).map((p) => [p.id, p]));
+
+  const receivedWithProfiles = received.map((c) => ({
+    ...c,
+    profiles: profilesById.get(c.requester_id)
+  }));
+
+  const sentWithProfiles = sent.map((c) => ({
+    ...c,
+    profiles: profilesById.get(c.receiver_id)
+  }));
+
 
   app.innerHTML = `
     <div class="dashboard-layout">
@@ -68,18 +97,20 @@ export async function renderConnectionRequests() {
                 <section>
                   <h4>Received</h4>
                   <div class="connections-list">
-                    ${received.length > 0
-                      ? received.map((item) => renderRequestCard(item, 'received')).join('')
+                    ${receivedWithProfiles.length > 0
+                      ? receivedWithProfiles.map((item) => renderRequestCard(item, 'received')).join('')
                       : '<p class="empty-text">No incoming requests yet.</p>'}
                   </div>
+
                 </section>
                 <section>
                   <h4>Sent</h4>
                   <div class="connections-list">
-                    ${sent.length > 0
-                      ? sent.map((item) => renderRequestCard(item, 'sent')).join('')
+                    ${sentWithProfiles.length > 0
+                      ? sentWithProfiles.map((item) => renderRequestCard(item, 'sent')).join('')
                       : '<p class="empty-text">No outgoing requests yet.</p>'}
                   </div>
+
                 </section>
               </div>
             </div>
@@ -102,7 +133,7 @@ function renderRequestCard(request, kind) {
     .toUpperCase() || 'S';
 
   return `
-    <div class="connection-row">
+    <div class="connection-row card">
       <div class="connection-user">
         <div class="avatar avatar-md">
           ${safeImageUrl(profile?.profile_image)
@@ -117,8 +148,8 @@ function renderRequestCard(request, kind) {
       <div class="connection-actions">
         ${kind === 'received'
           ? `<button class="btn btn-primary btn-sm" onclick="handleRequestAction('${request.id}', 'accept')">Accept</button>
-             <button class="btn btn-ghost btn-sm" onclick="handleRequestAction('${request.id}', 'reject')">Reject</button>`
-          : `<button class="btn btn-ghost btn-sm" onclick="handleRequestAction('${request.id}', 'cancel')">Cancel</button>`}
+             <button class="btn btn-outline btn-sm" onclick="handleRequestAction('${request.id}', 'reject')">Decline</button>`
+          : `<button class="btn btn-outline btn-sm" onclick="handleRequestAction('${request.id}', 'cancel')">Cancel</button>`}
       </div>
     </div>
   `;
@@ -126,7 +157,24 @@ function renderRequestCard(request, kind) {
 
 if (typeof window !== 'undefined') {
   window.handleRequestAction = async (requestId, action) => {
-  const status = action === 'accept' ? 'accepted' : action === 'reject' ? 'rejected' : 'rejected';
+  // Cancel sent request: remove the pending row.
+  if (action === 'cancel') {
+    const { error } = await supabase
+      .from('connections')
+      .delete()
+      .eq('id', requestId)
+      .eq('status', 'pending');
+
+    if (error) {
+      showToast('Unable to cancel that request right now.', 'error');
+    } else {
+      showToast('Request canceled.', 'success');
+      window.router.navigate('/connection-requests');
+    }
+    return;
+  }
+
+  const status = action === 'accept' ? 'accepted' : 'rejected';
   const { error } = await supabase
     .from('connections')
     .update({ status })

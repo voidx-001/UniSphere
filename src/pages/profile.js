@@ -132,29 +132,29 @@ export async function renderProfile(profileId = null) {
                     </span>
                   </div>
                 </div>
-                <div class="profile-actions">
-                  ${isOwnProfile ? `
-                    <button class="btn btn-primary" onclick="window.router.navigate('/settings')">
+              <div class="profile-actions">
+                ${isOwnProfile ? `
+                  <button class="btn btn-primary" onclick="window.router.navigate('/settings')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                    </svg>
+                    Edit Profile
+                  </button>
+                ` : `
+                  <button class="btn btn-primary" id="connect-btn" onclick="handleConnection()">
+                    ${getConnectionButtonText(connectionStatus)}
+                  </button>
+                  ${connectionStatus === 'accepted' ? `
+                    <button class="btn btn-outline" onclick="startChat('${profile.id}')">
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
-                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
                       </svg>
-                      Edit Profile
+                      Message
                     </button>
-                  ` : `
-                    <button class="btn btn-primary" id="connect-btn" onclick="handleConnection()">
-                      ${getConnectionButtonText(connectionStatus)}
-                    </button>
-                    ${connectionStatus === 'accepted' ? `
-                      <button class="btn btn-secondary" onclick="startChat('${profile.id}')">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
-                          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-                        </svg>
-                        Message
-                      </button>
-                    ` : ''}
-                  `}
-                </div>
+                  ` : ''}
+                `}
+              </div>
               </div>
             </div>
 

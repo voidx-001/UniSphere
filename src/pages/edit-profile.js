@@ -62,16 +62,16 @@ export async function renderEditProfile() {
               <form id="edit-profile-form" class="settings-form">
                 <div class="form-group">
                   <label class="form-label">Profile Picture</label>
-                  <div class="profile-upload">
-                    <div class="profile-preview">
-                      ${safeImageUrl(profile.profile_image)
-                        ? `<img src="${safeImageUrl(profile.profile_image)}" alt="${escapeHtml(profile.full_name)}">`
-                        : `<span>${initials}</span>`}
-                    </div>
-                    <div class="upload-info">
-                      <span class="upload-hint">Profile photos will appear in your cards and profile page.</span>
-                    </div>
-                  </div>
+              <div class="profile-upload">
+                <div class="profile-preview avatar-xl">
+                  ${safeImageUrl(profile.profile_image)
+                    ? `<img src="${safeImageUrl(profile.profile_image)}" alt="${escapeHtml(profile.full_name)}">`
+                    : `<span>${initials}</span>`}
+                </div>
+                <div class="upload-info">
+                  <span class="upload-hint">Profile photos will appear in your cards and profile page.</span>
+                </div>
+              </div>
                 </div>
                 <div class="form-row">
                   <div class="form-group">

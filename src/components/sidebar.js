@@ -55,14 +55,16 @@ export function renderSidebar() {
       </div>
 
       <nav class="sidebar-nav">
-        <a href="/dashboard" class="nav-item ${window.location.pathname === '/dashboard' ? 'active' : ''}" onclick="navigateTo(event, '/dashboard')">
+        <a href="/home" class="nav-item ${window.location.pathname === '/home' ? 'active' : ''}" onclick="navigateTo(event, '/home')">
+
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <rect x="3" y="3" width="7" height="7"/>
             <rect x="14" y="3" width="7" height="7"/>
             <rect x="14" y="14" width="7" height="7"/>
             <rect x="3" y="14" width="7" height="7"/>
           </svg>
-          <span>Dashboard</span>
+          <span>Home</span>
+
         </a>
         <a href="/profile" class="nav-item ${window.location.pathname === '/profile' ? 'active' : ''}" onclick="navigateTo(event, '/profile')">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -328,7 +330,7 @@ export function setupSidebarHandlers() {
     if (window.history.length > 1) {
       window.history.back();
     } else {
-      router.navigate('/dashboard');
+      router.navigate('/home');
     }
   };
 }

@@ -20,10 +20,10 @@ export async function renderDashboard() {
       ${renderSidebar()}
       <div class="main-content with-sidebar">
         <div id="sidebar-overlay" class="sidebar-overlay hidden" onclick="closeSidebar()"></div>
-        ${renderHeader('Dashboard', true)}
+        ${renderHeader('Home', true)}
         <main class="dashboard-main">
           <div class="container container-feed">
-            ${renderPageLoading('Loading your dashboard...')}
+Loading your home...
           </div>
         </main>
       </div>
@@ -32,7 +32,7 @@ export async function renderDashboard() {
   
   setupSidebarHandlers();
   setupHeaderHandlers();
-  
+
   const profile = await refreshUserProfile();
 
   const initials = profile?.full_name?.split(' ')
@@ -58,31 +58,17 @@ export async function renderDashboard() {
     }
   ];
 
-  // Fetch stats
-  const stats = await fetchDashboardStats();
-
-  // Fetch suggested students
-  const suggestedStudents = await fetchSuggestedStudents();
-
-  // Fetch recent students
-  const recentStudents = await fetchRecentStudents();
-
-  // Fetch pending connections
-  const pendingRequests = await fetchPendingRequests();
-
-  // Fetch campus feed posts
-  const feedPosts = await fetchFeedPosts(profile);
-
   const onboardingPending = window.localStorage.getItem('profile-onboarding-pending') === 'true';
-  const universities = await loadUniversities();
 
+  // Render the dashboard shell first, then fill the dynamic parts in parallel.
+  // This improves perceived performance a lot.
   app.innerHTML = `
     <div class="dashboard-layout">
       ${renderSidebar()}
 
       <div class="main-content with-sidebar">
         ${renderSidebarOverlay()}
-        ${renderHeader('Dashboard', true)}
+        ${renderHeader('Home', true)}
 
         <main class="dashboard-main">
           <div class="container container-feed">
@@ -113,22 +99,18 @@ export async function renderDashboard() {
               </div>
 
               <div class="stats-row">
-                ${renderStatCard('Connections', stats.connections, '/connections', 'M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2 M8.5 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z M20 8v6 M23 11h-6')}
-                ${renderStatCard('Messages', stats.messages, '/messages', 'M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z')}
-                ${renderStatCard('Students', stats.students, '/discover', 'M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2 M23 21v-2a4 4 0 0 0-3-3.87 M16 3.13a4 4 0 0 1 0 7.75')}
-                ${renderStatCard('Requests', pendingRequests.length, '/connection-requests', 'M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2 M8.5 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z M20 8v6 M23 11h-6')}
+                <div class="stat-pill" style="padding: 12px; opacity: 0.7;">Loading stats…</div>
               </div>
             </section>
 
             <section class="stories-bar slide-up" style="animation-delay: 0.05s">
-              <div class="stories-track">
+              <div class="stories-track" id="stories-track">
                 <button class="story-card story-card-add" onclick="window.router.navigate('/edit-profile')">
                   <span class="story-ring story-ring-add">
                     <span class="story-avatar story-avatar-add">+</span>
                   </span>
                   <span class="story-name">You</span>
                 </button>
-                ${[...suggestedStudents, ...recentStudents].slice(0, 8).map((student, i) => renderStoryCard(student, i)).join('')}
               </div>
             </section>
 
@@ -174,7 +156,7 @@ export async function renderDashboard() {
                         <label class="form-label" for="onboarding-university">University *</label>
                         <select id="onboarding-university" name="university" class="form-input" required>
                           <option value="">Select your university</option>
-                          ${universities.map(u => `<option value="${u}">${u}</option>`).join('')}
+                          <option value="__loading__" disabled>Loading…</option>
                         </select>
                       </div>
                       <div class="form-group">
@@ -219,12 +201,7 @@ export async function renderDashboard() {
                     </div>
                     <a href="/discover" class="btn btn-ghost btn-sm" onclick="navigateTo(event, '/discover')">Discover</a>
                   </div>
-                  <div class="feed-list" id="feed-list">
-                    ${feedPosts.length > 0
-                      ? feedPosts.map((post, i) => renderFeedPost(post, i)).join('')
-                      : renderEmptyFeed()
-                    }
-                  </div>
+                  <div class="feed-list" id="feed-list">Loading feed…</div>
                 </section>
 
                 <section class="events-section slide-up" style="animation-delay: 0.2s">
@@ -241,41 +218,21 @@ export async function renderDashboard() {
               </div>
 
               <aside class="sidebar-panel slide-up" style="animation-delay: 0.25s">
-                ${pendingRequests.length > 0 ? `
-                  <section class="panel-card">
-                    <div class="section-header">
-                      <h3>Connection requests</h3>
-                      <span class="badge-count">${pendingRequests.length}</span>
-                    </div>
-                    <div class="requests-list requests-list-stack">
-                      ${pendingRequests.map(req => renderRequestCard(req)).join('')}
-                    </div>
-                  </section>
-                ` : ''}
+                <div id="dashboard-requests-panel"></div>
 
                 <section class="panel-card">
                   <div class="section-header">
                     <h3>People you may know</h3>
                     <a href="/discover" class="btn btn-ghost btn-sm" onclick="navigateTo(event, '/discover')">See all</a>
                   </div>
-                  <div class="people-list">
-                    ${suggestedStudents.length > 0
-                      ? suggestedStudents.map(student => renderPeopleRow(student)).join('')
-                      : '<p class="empty-text">Complete your profile for better suggestions.</p>'
-                    }
-                  </div>
+                  <div class="people-list" id="dashboard-suggested-panel">Loading suggestions…</div>
                 </section>
 
                 <section class="panel-card">
                   <div class="section-header">
                     <h3>Recently joined</h3>
                   </div>
-                  <div class="people-list">
-                    ${recentStudents.length > 0
-                      ? recentStudents.slice(0, 4).map(student => renderPeopleRow(student)).join('')
-                      : '<p class="empty-text">No new students yet.</p>'
-                    }
-                  </div>
+                  <div class="people-list" id="dashboard-recent-panel">Loading recent…</div>
                 </section>
               </aside>
             </div>
@@ -288,13 +245,100 @@ export async function renderDashboard() {
   setupSidebarHandlers();
   setupHeaderHandlers();
   setupComposer();
+  // Load heavy dashboard datasets in parallel (and progressively fill the UI).
+
+  // Only after the shell is visible.
+  const [stats, suggestedStudents, recentStudents, pendingRequests, feedPosts] = await Promise.all([
+    fetchDashboardStats(),
+    fetchSuggestedStudents(),
+    fetchRecentStudents(),
+    fetchPendingRequests(),
+    fetchFeedPosts(profile)
+  ]);
+
+  const statsRow = document.querySelector('.stats-row');
+  if (statsRow) {
+    statsRow.innerHTML = `
+      ${renderStatCard('Connections', stats.connections, '/connections', 'M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2 M8.5 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z M20 8v6 M23 11h-6')}
+      ${renderStatCard('Messages', stats.messages, '/messages', 'M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z')}
+      ${renderStatCard('Students', stats.students, '/discover', 'M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2 M23 21v-2a4 4 0 0 0-3-3.87 M16 3.13a4 4 0 0 1 0 7.75')}
+      ${renderStatCard('Requests', pendingRequests.length, '/connection-requests', 'M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2 M8.5 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z M20 8v6 M23 11h-6')}
+    `;
+  }
+
+  const storiesTrack = document.getElementById('stories-track');
+  if (storiesTrack) {
+    storiesTrack.innerHTML = `
+      <button class="story-card story-card-add" onclick="window.router.navigate('/edit-profile')">
+        <span class="story-ring story-ring-add">
+          <span class="story-avatar story-avatar-add">+</span>
+        </span>
+        <span class="story-name">You</span>
+      </button>
+      ${[...suggestedStudents, ...recentStudents].slice(0, 8).map((student, i) => renderStoryCard(student, i)).join('')}
+    `;
+  }
+
+  const feedList = document.getElementById('feed-list');
+  if (feedList) {
+    feedList.innerHTML = feedPosts.length > 0
+      ? feedPosts.map((post, i) => renderFeedPost(post, i)).join('')
+      : renderEmptyFeed();
+  }
+
+  const requestsPanel = document.getElementById('dashboard-requests-panel');
+  if (requestsPanel) {
+    requestsPanel.innerHTML = pendingRequests.length > 0
+      ? `
+        <section class="panel-card">
+          <div class="section-header">
+            <h3>Connection requests</h3>
+            <span class="badge-count">${pendingRequests.length}</span>
+          </div>
+          <div class="requests-list requests-list-stack">
+            ${pendingRequests.map(req => renderRequestCard(req)).join('')}
+          </div>
+        </section>
+      `
+      : '';
+  }
+
+  const suggestedPanel = document.getElementById('dashboard-suggested-panel');
+  if (suggestedPanel) {
+    suggestedPanel.innerHTML = suggestedStudents.length > 0
+      ? suggestedStudents.map(student => renderPeopleRow(student)).join('')
+      : '<p class="empty-text">Complete your profile for better suggestions.</p>';
+  }
+
+  const recentPanel = document.getElementById('dashboard-recent-panel');
+  if (recentPanel) {
+    recentPanel.innerHTML = recentStudents.length > 0
+      ? recentStudents.slice(0, 4).map(student => renderPeopleRow(student)).join('')
+      : '<p class="empty-text">No new students yet.</p>';
+  }
+
+  // Onboarding modal: keep existing behavior, but now universities can be loaded after render.
   if (onboardingPending) {
     setTimeout(() => {
       document.getElementById('profile-onboarding-modal')?.classList.add('visible');
     }, 300);
     setupOnboardingForm();
+
+    try {
+      const universities = await loadUniversities();
+      const universitySelect = document.getElementById('onboarding-university');
+      if (universitySelect) {
+        universitySelect.innerHTML = `
+          <option value="">Select your university</option>
+          ${universities.map(u => `<option value="${u}">${u}</option>`).join('')}
+        `;
+      }
+    } catch {
+      // keep Loading… placeholder
+    }
   }
 }
+
 
 function setupOnboardingForm() {
   const form = document.getElementById('onboarding-form');
@@ -346,7 +390,7 @@ function hideOnboardingModal() {
 
 function renderStatCard(label, value, path, iconPath) {
   return `
-    <button class="stat-pill" onclick="navigateTo(event, '${path}')">
+    <button class="stat-pill card" onclick="navigateTo(event, '${path}')">
       <span class="stat-pill-icon">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="${iconPath}"/>
@@ -377,7 +421,7 @@ function renderStoryCard(student, index) {
     .join('')
     .substring(0, 2)
     .toUpperCase() || 'S';
-  const colors = ['#3b82f6', '#a855f7', '#22c55e', '#f59e0b', '#ef4444', '#06b6d4'];
+  const colors = ['#6366f1', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#06b6d4'];
   const ringColor = colors[index % colors.length];
 
   return `
@@ -399,7 +443,7 @@ function renderPostComposer(profile, initials) {
   return `
     <div class="post-composer social-composer slide-up" style="animation-delay: 0.12s">
       <div class="composer-header">
-        <div class="composer-avatar">
+        <div class="composer-avatar avatar-md">
           ${safeImageUrl(profile?.profile_image)
             ? `<img src="${safeImageUrl(profile.profile_image)}" alt="${escapeHtml(profile?.full_name || '')}">`
             : `<span>${initials}</span>`
@@ -444,7 +488,7 @@ function renderPeopleRow(student) {
   return `
     <div class="people-row">
       <button class="people-row-main" onclick="viewProfile('${student.id}')">
-        <div class="people-avatar">
+        <div class="people-avatar avatar-sm">
           ${safeImageUrl(student.profile_image)
             ? `<img src="${safeImageUrl(student.profile_image)}" alt="${escapeHtml(student.full_name)}">`
             : `<span>${initials}</span>`
@@ -455,7 +499,7 @@ function renderPeopleRow(student) {
           <span>${escapeHtml(student.university || 'University')}</span>
         </div>
       </button>
-      <button class="btn btn-primary btn-sm" onclick="connectWith(event, '${student.id}')">Connect</button>
+      <button class="btn btn-outline btn-sm" onclick="connectWith(event, '${student.id}')">Connect</button>
     </div>
   `;
 }
@@ -495,7 +539,7 @@ function setupComposer() {
       window.localStorage.removeItem('profile-onboarding-pending');
       window.localStorage.setItem('profile-onboarding-complete', 'true');
       showToast('Posted to campus feed!', 'success');
-      router.navigate('/dashboard');
+      router.navigate('/home');
     } catch (err) {
       showToast(err.message || 'Unable to post right now.', 'error');
       submitBtn.disabled = false;
@@ -527,7 +571,7 @@ function renderStudentCard(student) {
 
   return `
     <div class="student-card card" onclick="viewProfile('${student.id}')">
-      <div class="student-avatar avatar">
+      <div class="student-avatar avatar avatar-md">
         ${safeImageUrl(student.profile_image)
           ? `<img src="${safeImageUrl(student.profile_image)}" alt="${escapeHtml(student.full_name)}">`
           : `<span>${initials}</span>`
@@ -538,7 +582,7 @@ function renderStudentCard(student) {
         <p class="student-meta">${escapeHtml(student.university)}</p>
         <p class="student-detail">${escapeHtml(student.department)} - Sem ${student.semester}</p>
       </div>
-      <button class="btn btn-primary btn-sm" onclick="connectWith(event, '${student.id}')">Connect</button>
+      <button class="btn btn-outline btn-sm" onclick="connectWith(event, '${student.id}')">Connect</button>
     </div>
   `;
 }
@@ -553,7 +597,7 @@ function renderRequestCard(request) {
   return `
     <div class="request-card card">
       <div class="request-user">
-        <div class="student-avatar avatar">
+        <div class="student-avatar avatar avatar-md">
           ${safeImageUrl(request.profiles?.profile_image)
             ? `<img src="${safeImageUrl(request.profiles.profile_image)}" alt="${escapeHtml(request.profiles.full_name)}">`
             : `<span>${initials}</span>`
@@ -566,7 +610,7 @@ function renderRequestCard(request) {
       </div>
       <div class="request-actions">
         <button class="btn btn-primary btn-sm" onclick="acceptRequest(event, '${request.id}')">Accept</button>
-        <button class="btn btn-secondary btn-sm" onclick="rejectRequest(event, '${request.id}')">Decline</button>
+        <button class="btn btn-ghost btn-sm" onclick="rejectRequest(event, '${request.id}')">Decline</button>
       </div>
     </div>
   `;
@@ -584,10 +628,10 @@ function renderFeedPost(post, index = 0) {
   const likeText = post.is_liked ? 'Liked' : 'Like';
 
   return `
-    <article class="post-card social-post" data-post-id="${post.id}">
+    <article class="post-card social-post slide-up" data-post-id="${post.id}" style="animation-delay: ${index * 0.05}s">
       <header class="post-header">
         <button class="post-author" onclick="viewProfile('${post.user_id}')">
-          <div class="composer-avatar">
+          <div class="composer-avatar avatar-sm">
             ${safeImageUrl(post.author_profile_image)
               ? `<img src="${safeImageUrl(post.author_profile_image)}" alt="${escapeHtml(post.author_name)}">`
               : `<span>${initials}</span>`
@@ -612,7 +656,7 @@ function renderFeedPost(post, index = 0) {
           Comment
         </button>
         <button type="button" class="post-action-btn" onclick="connectWith(event, '${post.user_id}')">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a2 2 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
           Connect
         </button>
       </footer>
@@ -622,7 +666,7 @@ function renderFeedPost(post, index = 0) {
 
 function renderEventCard(event) {
   return `
-    <div class="event-card social-event">
+    <div class="event-card social-event card">
       <div class="event-icon">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
@@ -632,7 +676,7 @@ function renderEventCard(event) {
         <strong>${escapeHtml(event.title)}</strong>
         <p class="event-meta">${escapeHtml(event.date)} · ${escapeHtml(event.location)}</p>
       </div>
-      <button class="btn btn-outline btn-sm" type="button">Interested</button>
+      <button class="btn btn-primary btn-sm" type="button">Interested</button>
     </div>
   `;
 }
@@ -758,11 +802,12 @@ async function fetchFeedPosts(profile) {
 function renderEmptyFeed() {
   return `
     <div class="empty-state-card">
-      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+      <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
         <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
       </svg>
-      <p>No posts yet. Be the first to share something with your campus!</p>
-      <button class="btn btn-primary btn-sm" onclick="document.getElementById('composer-trigger')?.click()">Create a post</button>
+      <h3>No posts yet</h3>
+      <p>Be the first to share something with your campus!</p>
+      <button class="btn btn-primary" onclick="document.getElementById('composer-trigger')?.click()">Create a post</button>
     </div>
   `;
 }
@@ -813,7 +858,7 @@ if (typeof window !== 'undefined') {
       showToast('Failed to accept request', 'error');
     } else {
       showToast('Connection accepted!', 'success');
-      router.navigate('/dashboard');
+      router.navigate('/home');
     }
   };
 
@@ -828,7 +873,7 @@ if (typeof window !== 'undefined') {
     if (error) {
       showToast('Failed to reject request', 'error');
     } else {
-      router.navigate('/dashboard');
+      router.navigate('/home');
     }
   };
 

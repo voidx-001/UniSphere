@@ -1,5 +1,6 @@
 /** Single source of truth for route protection used by router and auth-guard. */
 export const PROTECTED_ROUTES = [
+  '/home',
   '/dashboard',
   '/search',
   '/discover',

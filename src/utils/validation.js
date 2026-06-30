@@ -7,43 +7,43 @@ export function validateRegisterStep(step, values) {
 
   if (step === 1) {
     if (!values.fullname || values.fullname.trim().length < 2) {
-      errors.fullname = 'Name too short, make it at least 2 chars.';
+      errors.fullname = 'Name must be at least 2 characters.';
     }
 
     if (!values.username || !isValidUsername(values.username.trim())) {
       errors.username = 'Use only letters, numbers, dots, and underscores.';
     }
 
-    if (!values.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.email.trim())) {
-      errors.email = 'Use a real email, no cap.';
+    if (!values.email || !/^[^\s@]+@[^\s@]+\.edu(\.[^\s@]+)?$/.test(values.email.trim())) {
+      errors.email = 'Please use your university .edu or .edu.pk email address.';
     }
 
     if (!values.password || values.password.length < 8) {
-      errors.password = 'Password gotta be 8+ chars.';
+      errors.password = 'Password must be at least 8 characters.';
     } else if (values.password.length < 12 && !/[A-Z]/.test(values.password)) {
-      errors.password = 'Make it stronger: mix caps, lowercase, and numbers.';
+      errors.password = 'Add uppercase, lowercase, and numbers for a stronger password.';
     }
 
     if (values.password !== values.confirmPassword) {
-      errors['confirm-password'] = 'Passwords gotta match, fam.';
+      errors['confirm-password'] = 'Passwords do not match.';
     }
   }
 
   if (step === 2) {
     if (!values.university) {
-      errors.university = 'Choose your uni so we know where you rep.';
+      errors.university = 'Please select your university.';
     }
 
     if (!values.department) {
-      errors.department = 'Pick your department, don’t leave it blank.';
+      errors.department = 'Please select your department.';
     }
 
     if (!values.semester) {
-      errors.semester = 'Pick your semester so we can match your vibe.';
+      errors.semester = 'Please select your semester.';
     }
 
     if (!values.terms) {
-      errors.terms = 'You gotta accept the terms to join.';
+      errors.terms = 'Please accept the terms to continue.';
     }
   }
 

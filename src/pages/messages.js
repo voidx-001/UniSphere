@@ -9,7 +9,7 @@ import { renderPageLoading } from '../components/loading.js';
 
 let conversations = [];
 let currentChat = null;
-let messagesInterval = null;
+let messagesChannel = null;
 let lastMessageAt = null;
 let lastMessageId = null;
 
@@ -472,8 +472,8 @@ export async function renderMessages() {
 
 async function fetchConversations(userId) {
   try {
-    // Get all messages where user is sender or receiver
-    const { data: messages, error } = await supabase
+    // 1) Conversations that already have messages
+    const { data: messages, error: messagesError } = await supabase
       .from('messages')
       .select(`
         id,
@@ -486,12 +486,11 @@ async function fetchConversations(userId) {
       .or(`sender_id.eq.${userId},receiver_id.eq.${userId}`)
       .order('created_at', { ascending: false });
 
-    if (error || !messages) return [];
+    if (messagesError) return [];
 
-    // Group by conversation partner
     const conversationMap = new Map();
 
-    for (const msg of messages) {
+    for (const msg of messages || []) {
       const partnerId = msg.sender_id === userId ? msg.receiver_id : msg.sender_id;
 
       if (!conversationMap.has(partnerId)) {
@@ -502,21 +501,42 @@ async function fetchConversations(userId) {
         });
       }
 
-      // Count unread messages
+      // Count unread messages only from the messages table
       if (msg.receiver_id === userId && !msg.read) {
         const conv = conversationMap.get(partnerId);
         conv.unread_count++;
       }
     }
 
-    // Fetch user profiles for conversation partners
+    // 2) Add accepted connections that may have zero messages yet
+    const { data: acceptedConnections, error: connectionsError } = await supabase
+      .from('connections')
+      .select('requester_id, receiver_id')
+      .eq('status', 'accepted')
+      .or(`requester_id.eq.${userId},receiver_id.eq.${userId}`);
+
+    if (!connectionsError && acceptedConnections) {
+      for (const c of acceptedConnections) {
+        const partnerId = c.requester_id === userId ? c.receiver_id : c.requester_id;
+        if (!partnerId) continue;
+
+        if (!conversationMap.has(partnerId)) {
+          conversationMap.set(partnerId, {
+            other_user_id: partnerId,
+            last_message: null,
+            unread_count: 0
+          });
+        }
+      }
+    }
+
+    // Fetch user profiles for all conversation partners
     const partnerIds = Array.from(conversationMap.keys());
     const { data: profiles } = await supabase
       .from('profiles')
       .select('*')
       .in('id', partnerIds);
 
-    // Combine data
     const result = [];
     for (const [partnerId, conv] of conversationMap) {
       const profile = profiles?.find(p => p.id === partnerId);
@@ -552,13 +572,18 @@ function renderConversationItem(conv, currentUserId, targetUserId) {
     .toUpperCase() || 'S';
 
   const isActive = user.id === targetUserId;
-  const time = formatMessageTime(conv.last_message.created_at);
-  const preview = conv.last_message.message.substring(0, 50);
+  const time = conv.last_message?.created_at
+    ? formatMessageTime(conv.last_message.created_at)
+    : '';
+
+  const preview = conv.last_message?.message
+    ? conv.last_message.message.substring(0, 50)
+    : 'No messages yet';
 
   return `
-    <div class="conversation-item ${isActive ? 'active' : ''}" onclick="selectConversation('${user.id}')">
+    <div class="conversation-item ${isActive ? 'active' : ''} card" onclick="selectConversation('${user.id}')">
       <div class="conversation-avatar">
-        <div class="avatar">
+        <div class="avatar avatar-sm">
           ${safeImageUrl(user.profile_image)
             ? `<img src="${safeImageUrl(user.profile_image)}" alt="${escapeHtml(user.full_name)}">`
             : `<span>${initials}</span>`
@@ -571,7 +596,7 @@ function renderConversationItem(conv, currentUserId, targetUserId) {
       </div>
       <div class="conversation-meta">
         <div class="conversation-time">${time}</div>
-        ${conv.unread_count > 0 ? `<div class="unread-badge">${conv.unread_count}</div>` : ''}
+        ${conv.unread_count > 0 ? `<div class="badge-count">${conv.unread_count}</div>` : ''}
       </div>
     </div>
   `;
@@ -654,8 +679,8 @@ async function openConversation(currentUser, otherUser) {
   // Load messages
   await loadMessages(currentUser.id, otherUser.id, { reset: true });
 
-  // Start polling for new messages
-  startMessagePolling(currentUser.id, otherUser.id);
+  // Subscribe to realtime messages for this conversation
+  subscribeToMessages(currentUser.id, otherUser.id);
 }
 
 async function loadMessages(currentUserId, otherUserId, { reset = false } = {}) {
@@ -718,22 +743,72 @@ function renderMessage(msg, currentUserId) {
   `;
 }
 
-function startMessagePolling(currentUserId, otherUserId) {
-  if (messagesInterval) clearInterval(messagesInterval);
+function subscribeToMessages(currentUserId, otherUserId) {
+  if (messagesChannel) {
+    supabase.removeChannel(messagesChannel);
+    messagesChannel = null;
+  }
 
-  messagesInterval = setInterval(async () => {
-    if (!currentChat) return;
-    await loadMessages(currentUserId, otherUserId);
-  }, 5000);
+  messagesChannel = supabase
+    .channel(`chat:${currentUserId}:${otherUserId}`)
+    .on(
+      'postgres_changes',
+      {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'messages',
+        filter: `receiver_id=eq.${currentUserId}`
+      },
+      (payload) => {
+        if (!currentChat || payload.new.sender_id !== currentChat.otherUser.id) return;
+        handleRealtimeMessage(payload.new);
+      }
+    )
+    .on(
+      'postgres_changes',
+      {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'messages',
+        filter: `sender_id=eq.${currentUserId}`
+      },
+      (payload) => {
+        if (!currentChat || payload.new.receiver_id !== currentChat.otherUser.id) return;
+        handleRealtimeMessage(payload.new);
+      }
+    )
+    .subscribe();
+}
+
+function handleRealtimeMessage(msg) {
+  const messagesContainer = document.getElementById('chat-messages');
+  if (!messagesContainer || !currentChat) return;
+
+  // Avoid rendering the same message twice (e.g. send path already rendered it)
+  if (msg.id === lastMessageId) return;
+
+  messagesContainer.insertAdjacentHTML(
+    'beforeend',
+    renderMessage(msg, currentChat.currentUser.id)
+  );
+
+  lastMessageAt = msg.created_at;
+  lastMessageId = msg.id;
+
+  messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+  if (msg.receiver_id === currentChat.currentUser.id) {
+    markMessagesAsRead(currentChat.currentUser.id, currentChat.otherUser.id);
+  }
 }
 
 function closeChat() {
   currentChat = null;
   lastMessageAt = null;
   lastMessageId = null;
-  if (messagesInterval) {
-    clearInterval(messagesInterval);
-    messagesInterval = null;
+  if (messagesChannel) {
+    supabase.removeChannel(messagesChannel);
+    messagesChannel = null;
   }
 }
 
@@ -768,7 +843,7 @@ if (typeof window !== 'undefined') {
       return;
     }
 
-    await loadMessages(currentChat.currentUser.id, currentChat.otherUser.id);
+    // The realtime subscription will append the sent message to the UI.
   };
 
   window.handleMessageKeydown = (e) => {

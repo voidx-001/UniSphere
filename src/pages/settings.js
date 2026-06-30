@@ -49,7 +49,7 @@ export async function renderSettings() {
                   <p class="section-desc">Update your personal information</p>
                 </div>
 
-                <form id="profile-form" class="settings-form card">
+                <form id="profile-form" class="settings-form glass-card">
                   <div class="form-group">
                     <label class="form-label">Profile Picture</label>
                     <div class="profile-upload">
@@ -134,7 +134,7 @@ export async function renderSettings() {
                   <p class="section-desc">Manage your password and security settings</p>
                 </div>
 
-                <form id="password-form" class="settings-form card">
+                <form id="password-form" class="settings-form glass-card">
                   <div class="form-group">
                     <label class="form-label" for="current-password">Current Password</label>
                     <input type="password" id="current-password" class="form-input" placeholder="Enter current password">
@@ -169,7 +169,7 @@ export async function renderSettings() {
                   <p class="section-desc">Customize how UniSphere looks</p>
                 </div>
 
-                <div class="settings-form card">
+                <div class="settings-form glass-card">
                   <div class="theme-toggle">
                     <div class="theme-info">
                       <span class="theme-label">Dark Mode</span>
@@ -189,7 +189,7 @@ export async function renderSettings() {
                   <p class="section-desc">Manage your account settings</p>
                 </div>
 
-                <div class="settings-form card">
+                <div class="settings-form glass-card">
                   <div class="account-info">
                     <div class="info-item">
                       <span class="info-label">Email Address</span>

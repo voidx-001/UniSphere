@@ -5,7 +5,7 @@ import { showToast } from '../utils/toast.js';
 export function renderHeader(title = '', showSearch = false) {
   const user = getUserProfile();
   const currentPath = typeof window !== 'undefined' ? window.location.pathname : '/';
-  const canGoBack = typeof window !== 'undefined' && window.location.pathname !== '/' && window.location.pathname !== '/dashboard';
+  const canGoBack = typeof window !== 'undefined' && window.location.pathname !== '/' && window.location.pathname !== '/home';
 
   const initials = user?.full_name?.split(' ')
     .map(n => n[0])
@@ -24,7 +24,7 @@ export function renderHeader(title = '', showSearch = false) {
               <line x1="3" y1="18" x2="21" y2="18"/>
             </svg>
           </button>
-          <a href="/dashboard" class="brand" onclick="navigateTo(event, '/dashboard')">
+          <a href="/home" class="brand" onclick="navigateTo(event, '/home')">
             <span class="brand-mark">U</span>
             <span class="brand-label">UniSphere</span>
           </a>

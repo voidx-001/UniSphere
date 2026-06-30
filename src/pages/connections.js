@@ -34,25 +34,48 @@ export async function renderConnections() {
   setupSidebarHandlers();
   setupHeaderHandlers();
 
-  const { data, error } = await supabase
+  // Fetch accepted connections first, then fetch profiles explicitly.
+  // This avoids brittle join aliasing across Supabase/PostgREST setups.
+  const { data: connectionsData, error: connectionsError } = await supabase
     .from('connections')
-    .select(`
-      id,
-      status,
-      requester_id,
-      receiver_id,
-      profiles!connections_requester_id_fkey(id, full_name, username, university, department, profile_image),
-      profiles_receiver!connections_receiver_id_fkey(id, full_name, username, university, department, profile_image)
-    `)
+    .select('id, status, requester_id, receiver_id')
     .or(`requester_id.eq.${profile.id},receiver_id.eq.${profile.id}`)
     .eq('status', 'accepted');
 
-  const connections = (data || []).map((item) => {
-    const otherProfile = item.requester_id === profile.id
-      ? item.profiles_receiver
-      : item.profiles;
-    return { ...item, otherProfile };
+  if (connectionsError) {
+    console.error('Failed to load accepted connections', connectionsError);
+  }
+
+  const connections = connectionsData || [];
+
+  const otherProfileIds = Array.from(
+    new Set(
+      connections
+        .map((c) => (c.requester_id === profile.id ? c.receiver_id : c.requester_id))
+        .filter(Boolean)
+    )
+  );
+
+  const { data: profilesData } = await supabase
+    .from('profiles')
+    .select('id, full_name, username, university, department, profile_image')
+    .in('id', otherProfileIds);
+
+  const profilesById = new Map((profilesData || []).map((p) => [p.id, p]));
+
+  const connectionsWithProfiles = connections.map((c) => {
+    const otherId = c.requester_id === profile.id ? c.receiver_id : c.requester_id;
+    return {
+      ...c,
+      otherProfile: profilesById.get(otherId)
+    };
   });
+
+  // Filter out any connections where the other user's profile could not be loaded.
+  // Without this, the UI might render empty rows depending on data inconsistencies.
+  const safeConnectionsWithProfiles = connectionsWithProfiles.filter(
+    (c) => Boolean(c.otherProfile && c.otherProfile.id)
+  );
 
   app.innerHTML = `
     <div class="dashboard-layout">
@@ -70,8 +93,8 @@ export async function renderConnections() {
                 </div>
               </div>
               <div class="connections-list">
-                ${connections.length > 0
-                  ? connections.map((connection) => renderConnectionRow(connection, profile.id)).join('')
+                ${safeConnectionsWithProfiles.length > 0
+                  ? safeConnectionsWithProfiles.map((connection) => renderConnectionRow(connection, profile.id)).join('')
                   : '<p class="empty-text">You have no accepted connections yet.</p>'}
               </div>
             </div>
@@ -94,7 +117,7 @@ function renderConnectionRow(connection, currentUserId) {
     .toUpperCase() || 'S';
 
   return `
-    <div class="connection-row">
+    <div class="connection-row card">
       <div class="connection-user">
         <div class="avatar avatar-md">
           ${safeImageUrl(profile?.profile_image)
@@ -107,8 +130,8 @@ function renderConnectionRow(connection, currentUserId) {
         </div>
       </div>
       <div class="connection-actions">
-        <button class="btn btn-secondary btn-sm" onclick="window.router.navigate('/messages?user=${profile?.id}')">Message</button>
-        <button class="btn btn-ghost btn-sm" onclick="removeConnection('${connection.id}')">Remove</button>
+        <button class="btn btn-primary btn-sm" onclick="window.router.navigate('/messages?user=${profile?.id}')">Message</button>
+        <button class="btn btn-outline btn-sm" onclick="removeConnection('${connection.id}')">Remove</button>
       </div>
     </div>
   `;

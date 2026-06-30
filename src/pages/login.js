@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase.js';
 import { showToast } from '../utils/toast.js';
 import { getPostAuthRoute } from '../utils/auth-flow.js';
 
-const REMEMBER_EMAIL_KEY = 'unisphere-remember-email';
+const REMEMBER_IDENTIFIER_KEY = 'unisphere-remember-identifier';
 
 export async function renderLogin() {
   const app = document.getElementById('app');
@@ -35,14 +35,14 @@ export async function renderLogin() {
             <span>UniSphere</span>
           </a>
           <h1 class="auth-title">Welcome back</h1>
-          <p class="auth-subtitle">Sign in to continue networking with students across Pakistan</p>
+          <p class="auth-subtitle">Sign in to continue connecting with students across Pakistan</p>
         </div>
 
         <form id="login-form" class="auth-form">
           <div class="form-group">
-            <label class="form-label" for="email">Email address</label>
-            <input type="email" id="email" name="email" class="form-input"
-              placeholder="you@university.edu" required autocomplete="email">
+            <label class="form-label" for="email">Email or username</label>
+            <input type="text" id="email" name="email" class="form-input"
+              placeholder="you@university.edu.pk or @username" required autocomplete="username">
             <span class="form-error" id="email-error"></span>
           </div>
 
@@ -75,7 +75,7 @@ export async function renderLogin() {
           </div>
 
           <button type="submit" class="btn btn-primary btn-lg auth-submit">
-            <span class="btn-text">Sign in</span>
+            <span class="btn-text">Sign in to UniSphere</span>
             <span class="btn-loading hidden">
               <span class="spinner"></span>
               <span>Signing in...</span>
@@ -84,7 +84,7 @@ export async function renderLogin() {
         </form>
 
         <div class="auth-footer">
-          <p>Don't have an account? <a href="/register" onclick="window.router.navigate('/register'); return false;">Create one</a></p>
+          <p>Don't have an account? <a href="/register" onclick="window.router.navigate('/register'); return false;">Sign up</a></p>
         </div>
 
         <div id="forgot-modal" class="modal hidden">
@@ -103,7 +103,7 @@ export async function renderLogin() {
               <p class="modal-desc">Enter your email and we'll send you a link to choose a new password.</p>
               <div class="form-group">
                 <label class="form-label" for="reset-email">Email address</label>
-                <input type="email" id="reset-email" class="form-input" placeholder="you@university.edu" autocomplete="email">
+                <input type="email" id="reset-email" class="form-input" placeholder="you@university.edu.pk" autocomplete="email">
               </div>
             </div>
             <div class="modal-footer">
@@ -127,28 +127,48 @@ export async function renderLogin() {
 
 function setupLoginForm() {
   const form = document.getElementById('login-form');
-  const savedEmail = window.localStorage.getItem(REMEMBER_EMAIL_KEY);
+  const savedIdentifier = window.localStorage.getItem(REMEMBER_IDENTIFIER_KEY);
 
-  if (savedEmail) {
-    form.email.value = savedEmail;
+  if (savedIdentifier) {
+    form.email.value = savedIdentifier;
     form.remember.checked = true;
   }
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
 
-    const email = form.email.value.trim();
+    let identifier = form.email.value.trim();
     const password = form.password.value;
     const remember = form.remember.checked;
 
-    if (!email) {
-      showFieldError('email', 'Email is required');
+    if (!identifier) {
+      showFieldError('email', 'Email or username is required');
       return;
     }
-    if (!validateEmail(email)) {
+
+    // Strip a leading @ if the user typed @username
+    if (identifier.startsWith('@')) {
+      identifier = identifier.slice(1);
+    }
+
+    let email = identifier;
+    if (!identifier.includes('@')) {
+      if (!isValidUsername(identifier)) {
+        showFieldError('email', 'Enter a valid email address or username');
+        return;
+      }
+
+      const resolved = await resolveEmailFromUsername(identifier);
+      if (!resolved) {
+        showFieldError('email', 'No account found with that username');
+        return;
+      }
+      email = resolved;
+    } else if (!validateEmail(identifier)) {
       showFieldError('email', 'Enter a valid email address');
       return;
     }
+
     clearFieldError('email');
 
     if (!password) {
@@ -167,16 +187,16 @@ function setupLoginForm() {
 
       if (error) {
         const message = error.message.includes('Invalid login credentials')
-          ? 'Incorrect email or password. Please try again.'
+          ? 'Incorrect username/email or password. Please try again.'
           : error.message;
         showToast(message, 'error');
         return;
       }
 
       if (remember) {
-        window.localStorage.setItem(REMEMBER_EMAIL_KEY, email);
+        window.localStorage.setItem(REMEMBER_IDENTIFIER_KEY, identifier);
       } else {
-        window.localStorage.removeItem(REMEMBER_EMAIL_KEY);
+        window.localStorage.removeItem(REMEMBER_IDENTIFIER_KEY);
       }
 
       showToast('Signed in successfully!', 'success');
@@ -255,6 +275,23 @@ function setupLoginForm() {
 
 function validateEmail(email) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+function isValidUsername(username) {
+  return /^[a-zA-Z0-9._]{3,30}$/.test(username);
+}
+
+async function resolveEmailFromUsername(username) {
+  const { data, error } = await supabase.rpc('get_email_by_username', {
+    candidate: username
+  });
+
+  if (error) {
+    console.warn('Username lookup failed:', error.message || error);
+    return null;
+  }
+
+  return data || null;
 }
 
 function showFieldError(field, message) {

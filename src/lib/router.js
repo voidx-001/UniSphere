@@ -22,6 +22,7 @@ const router = {
     '/': renderLanding,
     '/login': renderLogin,
     '/register': renderRegister,
+    '/home': renderDashboard,
     '/dashboard': renderDashboard,
     '/search': renderSearch,
     '/discover': renderDiscover,
@@ -74,7 +75,7 @@ const router = {
       }
 
       if (decision === 'dashboard') {
-        this.navigate('/dashboard', false);
+        this.navigate('/home', false);
         return;
       }
 

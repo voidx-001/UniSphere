@@ -29,6 +29,36 @@ test('backend migration allows dots in usernames', () => {
   assert.match(migration, /\^\[A-Za-z0-9\._\]\{3,30\}\$/);
 });
 
+test('step validation requires .edu email for registration', () => {
+  const validResult = validateRegisterStep(1, {
+    fullname: 'Ali Khan',
+    username: 'alikhan',
+    email: 'ali@university.edu',
+    password: 'Password123!',
+    confirmPassword: 'Password123!'
+  });
+  assert.equal(validResult.isValid, true);
+
+  const eduPkResult = validateRegisterStep(1, {
+    fullname: 'Ali Khan',
+    username: 'alikhan',
+    email: 'ali@uni.edu.pk',
+    password: 'Password123!',
+    confirmPassword: 'Password123!'
+  });
+  assert.equal(eduPkResult.isValid, true);
+
+  const invalidResult = validateRegisterStep(1, {
+    fullname: 'Ali Khan',
+    username: 'alikhan',
+    email: 'ali@gmail.com',
+    password: 'Password123!',
+    confirmPassword: 'Password123!'
+  });
+  assert.equal(invalidResult.isValid, false);
+  assert.ok(invalidResult.errors.email);
+});
+
 test('step validation catches missing signup details', () => {
   const result = validateRegisterStep(2, {
     university: '',
